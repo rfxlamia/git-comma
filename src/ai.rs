@@ -10,6 +10,7 @@ use std::path::Path;
 
 fn map_api_error(err: ApiError) -> AiError {
     match err {
+        ApiError::HttpError(400) => AiError::ModelUnavailable(err.to_string()),
         ApiError::HttpError(404) => AiError::ModelUnavailable(err.to_string()),
         ApiError::HttpError(429) => AiError::RateLimitExceeded(err.to_string()),
         ApiError::RateLimited => AiError::RateLimitExceeded(err.to_string()),
