@@ -26,12 +26,12 @@ fn main() {
         match Config::load_from_path(&config_path) {
             Ok(cfg) => cfg,
             Err(crate::config::ConfigError::MalformedJson) => {
-                eprintln!("Konfigurasi corrupted. Menghapus dan/setup ulang...");
+                eprintln!("Config corrupted. Deleting and re-setting up...");
                 std::fs::remove_file(&config_path).ok();
                 setup::run_first_startup()
             }
             Err(e) => {
-                eprintln!("Gagal membaca konfigurasi: {}. Setup ulang...", e);
+                eprintln!("Failed to read config: {}. Re-running setup...", e);
                 setup::run_first_startup()
             }
         }
@@ -43,7 +43,7 @@ fn main() {
     let _preflight_result = match preflight::run() {
         Ok(success) => success,
         Err(preflight::PreflightError::NotGitRepo) => {
-            eprintln!("Error: Ini bukan git repository.");
+            eprintln!("Error: This is not a git repository.");
             std::process::exit(1);
         }
         Err(preflight::PreflightError::GitCommandFailed { command, source }) => {
@@ -62,7 +62,7 @@ fn main() {
                             std::process::exit(1);
                         }
                         Err(preflight::PreflightError::NotGitRepo) => {
-                            eprintln!("Error: Ini bukan git repository.");
+                            eprintln!("Error: This is not a git repository.");
                             std::process::exit(1);
                         }
                         Err(e) => {
@@ -88,7 +88,7 @@ fn main() {
                     }
                 }
             } else {
-                eprintln!("\n❌ Dibatalkan. Stage file yang lebih sedikit dan coba lagi.");
+                eprintln!("\n❌ Cancelled. Stage fewer files and try again.");
                 std::process::exit(1);
             }
         }
@@ -106,9 +106,9 @@ fn main() {
     ) {
         Ok(draft) => draft,
         Err(crate::ai::AiError::Api(msg)) => {
-            eprintln!("\n❌ Gagal menghubungi OpenRouter ({})", msg);
-            eprintln!("💡 Ingin lanjut tulis manual di Editor?");
-            if inquire::Confirm::new("Buka editor?")
+            eprintln!("\n❌ Failed to contact OpenRouter ({})", msg);
+            eprintln!("💡 Continue writing manually in Editor?");
+            if inquire::Confirm::new("Open editor?")
                 .with_default(true)
                 .prompt()
                 .unwrap_or(false)
@@ -125,7 +125,7 @@ fn main() {
             }
         }
         Err(crate::ai::AiError::EmptyResponse) => {
-            eprintln!("\n❌ Respons kosong dari API. Coba lagi atau gunakan editor.");
+            eprintln!("\n❌ Empty response from API. Try again or use the editor.");
             std::process::exit(1);
         }
         Err(crate::ai::AiError::Network(msg)) => {
@@ -147,18 +147,18 @@ fn main() {
                 if let Some(repo_root) = crate::ai::get_repo_root() {
                     match crate::ai::commit_with_draft(&draft, &repo_root) {
                         Ok(()) => {
-                            println!("🎉 Commit berhasil!");
+                            println!("🎉 Commit successful!");
                             break;
                         }
                         Err(_e) => {
-                            eprintln!("❌ Commit dibatalkan oleh sistem (mungkin pre-commit hook/linter gagal).");
-                            eprintln!("💡 Draft aman! Setelah diperbaiki, jalankan:");
+                            eprintln!("❌ Commit rejected by system (possibly pre-commit hook/linter failed).");
+                            eprintln!("💡 Draft is safe! After fixing, run:");
                             eprintln!("   git commit -F .git/comma_msg.txt");
                             std::process::exit(1);
                         }
                     }
                 } else {
-                    eprintln!("❌ Tidak dapat menemukan git repository root.");
+                    eprintln!("❌ Could not find git repository root.");
                     std::process::exit(1);
                 }
             }
@@ -172,18 +172,18 @@ fn main() {
                         if let Some(repo_root) = crate::ai::get_repo_root() {
                             match crate::ai::commit_with_draft(&edited, &repo_root) {
                                 Ok(()) => {
-                                    println!("🎉 Commit berhasil!");
+                                    println!("🎉 Commit successful!");
                                     break;
                                 }
                                 Err(_e) => {
-                                    eprintln!("❌ Commit dibatalkan oleh sistem (mungkin pre-commit hook/linter gagal).");
-                                    eprintln!("💡 Draft aman! Setelah diperbaiki, jalankan:");
+                                    eprintln!("❌ Commit rejected by system (possibly pre-commit hook/linter failed).");
+                                    eprintln!("💡 Draft is safe! After fixing, run:");
                                     eprintln!("   git commit -F .git/comma_msg.txt");
                                     std::process::exit(1);
                                 }
                             }
                         } else {
-                            eprintln!("❌ Tidak dapat menemukan git repository root.");
+                            eprintln!("❌ Could not find git repository root.");
                             std::process::exit(1);
                         }
                     }
