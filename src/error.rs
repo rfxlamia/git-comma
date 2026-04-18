@@ -1,10 +1,13 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-#[allow(dead_code)]
 pub enum AiError {
     #[error("API error: {0}")]
     Api(String),
+    #[error("Model unavailable: {0}")]
+    ModelUnavailable(String),
+    #[error("Rate limit exceeded: {0}")]
+    RateLimitExceeded(String),
     #[error("Network error: {0}")]
     Network(String),
     #[error("Empty response from API")]

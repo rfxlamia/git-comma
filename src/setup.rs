@@ -1,4 +1,4 @@
-use crate::config::{home_config_path, Config};
+use crate::config::{home_config_path, Config, ConfigError};
 use crate::openrouter::{ApiError, Client};
 use crate::ui;
 
@@ -47,9 +47,41 @@ pub fn run_first_startup() -> Config {
     };
 
     let path = home_config_path();
-    config.save(&path).expect("Failed to save config");
+    if let Err(e) = config.save(&path) {
+        eprintln!("Warning: Failed to save config: {}. Continuing anyway...", e);
+    }
 
     ui::save_confirmation();
 
     config
+}
+
+pub fn reconfigure_model_silent(api_key: &str) -> Result<String, ConfigError> {
+    let client = Client::new(api_key.to_string());
+
+    let models = loop {
+        match client.fetch_models() {
+            Ok(m) => break m,
+            Err(ApiError::Unauthorized) => {
+                return Err(ConfigError::Unauthorized);
+            }
+            Err(ApiError::RateLimited) => {
+                std::thread::sleep(std::time::Duration::from_secs(2));
+                continue;
+            }
+            Err(e) => {
+                return Err(ConfigError::ApiError(e.to_string()));
+            }
+        }
+    };
+
+    let model_ids: Vec<String> = models.iter().map(|m| m.id.clone()).collect();
+    let selection = ui::model_select_prompt(&model_ids);
+    let model_id = if selection == "[ Ketik Manual ID Model... ]" {
+        ui::manual_model_prompt()
+    } else {
+        selection
+    };
+
+    Ok(model_id)
 }

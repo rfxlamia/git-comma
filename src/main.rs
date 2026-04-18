@@ -132,6 +132,14 @@ fn main() {
             eprintln!("\n❌ Network error: {}", msg);
             std::process::exit(1);
         }
+        Err(crate::ai::AiError::ModelUnavailable(msg)) => {
+            eprintln!("\n❌ Model unavailable: {}", msg);
+            std::process::exit(1);
+        }
+        Err(crate::ai::AiError::RateLimitExceeded(msg)) => {
+            eprintln!("\n❌ Rate limit exceeded: {}", msg);
+            std::process::exit(1);
+        }
     };
 
     // Show result

@@ -40,6 +40,8 @@ impl Config {
 pub enum ConfigError {
     IoError(std::io::Error),
     MalformedJson,
+    Unauthorized,
+    ApiError(String),
 }
 
 impl fmt::Display for ConfigError {
@@ -47,6 +49,8 @@ impl fmt::Display for ConfigError {
         match self {
             ConfigError::IoError(e) => write!(f, "IO error: {}", e),
             ConfigError::MalformedJson => write!(f, "Malformed JSON"),
+            ConfigError::Unauthorized => write!(f, "API key is invalid or expired"),
+            ConfigError::ApiError(msg) => write!(f, "API error: {}", msg),
         }
     }
 }

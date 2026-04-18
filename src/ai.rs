@@ -4,9 +4,19 @@ pub use crate::prompt::build_payload;
 pub use crate::sanitization::sanitize_response;
 pub use crate::tui::{open_editor, prompt_action, prompt_custom_instruction, Action};
 
-use crate::openrouter;
+use crate::openrouter::{self, ApiError};
 use std::io::{self, Write};
 use std::path::Path;
+
+fn map_api_error(err: ApiError) -> AiError {
+    match err {
+        ApiError::HttpError(404) => AiError::ModelUnavailable(err.to_string()),
+        ApiError::HttpError(429) => AiError::RateLimitExceeded(err.to_string()),
+        ApiError::RateLimited => AiError::RateLimitExceeded(err.to_string()),
+        ApiError::NetworkError(msg) => AiError::Network(msg),
+        _ => AiError::Api(err.to_string()),
+    }
+}
 
 /// Run the AI engine to generate a commit message from diff content.
 pub fn run_ai_engine(api_key: &str, model: &str, diff_content: &str) -> Result<String, AiError> {
@@ -21,7 +31,7 @@ pub fn run_ai_engine(api_key: &str, model: &str, diff_content: &str) -> Result<S
     let client = openrouter::Client::new(api_key.to_string());
     let raw_response = client
         .generate_commit_message(&payload)
-        .map_err(|e| AiError::Api(format!("{}", e)))?;
+        .map_err(map_api_error)?;
 
     // Sanitize and return
     let sanitized = sanitize_response(&raw_response);
@@ -47,7 +57,7 @@ pub fn regenerate_with_instruction(
     let client = openrouter::Client::new(api_key.to_string());
     let raw_response = client
         .generate_commit_message(&payload)
-        .map_err(|e| AiError::Api(format!("{}", e)))?;
+        .map_err(map_api_error)?;
 
     let sanitized = sanitize_response(&raw_response);
     if sanitized.is_empty() {
