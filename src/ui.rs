@@ -3,11 +3,11 @@ use inquire::PasswordDisplayMode;
 pub fn welcome_message() {
     println!();
     println!("============================================");
-    println!("  Selamat datang di comma!");
+    println!("  Welcome to comma!");
     println!("  AI-powered git commit generator.");
     println!("============================================");
     println!();
-    println!("Pertama-tama, kita perlu sedikit konfigurasi.");
+    println!("First, we need a bit of configuration.");
     println!();
 }
 
@@ -22,7 +22,7 @@ pub fn error_message(message: &str) {
 }
 
 pub fn api_key_prompt() -> String {
-    inquire::Password::new("Masukkan OpenRouter API Key (sk-or-v1-...):")
+    inquire::Password::new("Enter OpenRouter API Key (sk-or-v1-...):")
         .with_display_mode(PasswordDisplayMode::Masked)
         .with_help_message("API key bisa diambil di https://openrouter.ai/keys")
         .prompt()
@@ -35,7 +35,7 @@ pub fn model_select_prompt(models: &[String]) -> String {
     let mut options: Vec<String> = vec!["[ Ketik Manual ID Model... ]".to_string()];
     options.extend(models.iter().cloned());
 
-    let sel = Select::new("Pilih model (ketik untuk mencari):", options)
+    let sel = Select::new("Select model (type to search):", options)
         .with_page_size(20)
         .prompt()
         .expect("User cancelled");
@@ -44,50 +44,50 @@ pub fn model_select_prompt(models: &[String]) -> String {
 }
 
 pub fn manual_model_prompt() -> String {
-    inquire::Text::new("Masukkan ID model secara manual (contoh: anthropic/claude-3-haiku):")
+    inquire::Text::new("Enter model ID manually (e.g. anthropic/claude-3-haiku):")
         .prompt()
         .expect("User cancelled")
 }
 
 pub fn save_confirmation() {
     println!();
-    println!("Konfigurasi disimpan!");
+    println!("Configuration saved!");
     println!();
 }
 
 pub fn fetching_models_message() {
-    print!("Mengambil daftar model dari OpenRouter...");
+    print!("Fetching model list from OpenRouter...");
     std::io::Write::flush(&mut std::io::stdout()).unwrap();
 }
 
 pub fn models_loaded(count: usize) {
-    println!(" done! {} model ditemukan.", count);
-    println!("Ketik untuk mencari...");
+    println!(" done! {} models found.", count);
+    println!("Type to search...");
     println!();
 }
 
 pub fn rate_limited_message() {
-    error_message("Terlalu banyak permintaan. Mohon tunggu sebentar dan coba lagi.");
+    error_message("Too many requests. Please wait a moment and try again.");
 }
 
 pub fn confirm_large_diff(size: usize) -> bool {
     println!();
-    println!("⚠️ Diff terlalu besar ({} karakter).", size);
+    println!("⚠️ Diff too large ({} characters).", size);
     println!();
-    println!("Commit dengan diff sebanyak ini merupakan anti-pattern Git:");
-    println!("- Kemungkinan me-stage file yang tidak seharusnya (lock files, dist/)");
-    println!("- Sebaiknya dipecah menjadi commit yang lebih kecil per fitur");
+    println!("Committing with such a large diff is a Git anti-pattern:");
+    println!("- You may have staged files that shouldn't be there (lock files, dist/)");
+    println!("- Better to split into smaller commits per feature");
     println!();
-    inquire::Confirm::new("Tetap lanjut?")
+    inquire::Confirm::new("Continue anyway?")
         .with_default(false)
         .prompt()
         .unwrap_or(false)
 }
 
 pub fn print_unstaged_files(files: &[crate::preflight::UnstagedFile]) {
-    println!("⚠️ Tidak ada file yang di-stage untuk di-commit.");
+    println!("⚠️ No files staged for commit.");
     println!();
-    println!("File yang berubah tapi belum di-stage:");
+    println!("Changed files that are not staged:");
     for file in files {
         println!(" {} {}", file.status, file.path);
     }
@@ -95,7 +95,7 @@ pub fn print_unstaged_files(files: &[crate::preflight::UnstagedFile]) {
 }
 
 pub fn prompt_git_add() -> bool {
-    inquire::Confirm::new("Apakah kamu ingin melakukan 'git add .' sekarang?")
+    inquire::Confirm::new("Do you want to run 'git add .' now?")
         .with_default(true)
         .prompt()
         .unwrap_or(false)

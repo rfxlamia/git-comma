@@ -26,22 +26,22 @@ pub fn run_first_startup() -> Config {
                 break Config { api_key, model_id };
             }
             Err(ApiError::Unauthorized) => {
-                ui::error_message("API Key tidak valid. Pastikan Anda memasukkan key yang benar.");
+                ui::error_message("Invalid API Key. Make sure you entered the correct key.");
                 api_key = ui::api_key_prompt();
             }
             Err(ApiError::Forbidden) => {
                 ui::error_message(
-                    "API Key tidak memiliki akses. Periksa permissions di OpenRouter.",
+                    "API Key doesn't have access. Check permissions on OpenRouter.",
                 );
             }
             Err(ApiError::RateLimited) => {
                 ui::rate_limited_message();
             }
             Err(ApiError::EmptyResponse) => {
-                ui::error_message("Tidak ada model tersedia dari OpenRouter. Silakan coba lagi.");
+                ui::error_message("No models available from OpenRouter. Please try again.");
             }
             Err(e) => {
-                ui::error_message(&format!("Gagal mengambil model: {}. Silakan coba lagi.", e));
+                ui::error_message(&format!("Failed to fetch models: {}. Please try again.", e));
             }
         }
     };
