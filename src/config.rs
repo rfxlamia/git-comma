@@ -20,15 +20,16 @@ impl Config {
             let mut file = std::fs::File::create(&tmp_path)?;
             serde_json::to_writer_pretty(&mut file, self)?;
         }
-        std::fs::rename(&tmp_path, path)?;
 
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mut perms = std::fs::metadata(path)?.permissions();
+            let mut perms = std::fs::metadata(&tmp_path)?.permissions();
             perms.set_mode(0o600);
-            std::fs::set_permissions(path, perms)?;
+            std::fs::set_permissions(&tmp_path, perms)?;
         }
+
+        std::fs::rename(&tmp_path, path)?;
 
         Ok(())
     }
@@ -38,7 +39,6 @@ impl Config {
 pub enum ConfigError {
     IoError(std::io::Error),
     MalformedJson,
-    MissingFile,
 }
 
 impl fmt::Display for ConfigError {
@@ -46,7 +46,6 @@ impl fmt::Display for ConfigError {
         match self {
             ConfigError::IoError(e) => write!(f, "IO error: {}", e),
             ConfigError::MalformedJson => write!(f, "Malformed JSON"),
-            ConfigError::MissingFile => write!(f, "Missing file"),
         }
     }
 }
