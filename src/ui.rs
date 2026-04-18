@@ -26,7 +26,7 @@ pub fn api_key_prompt() -> String {
         .with_display_mode(PasswordDisplayMode::Masked)
         .with_help_message("API key bisa diambil di https://openrouter.ai/keys")
         .prompt()
-        .expect("Failed to read API key")
+        .expect("User cancelled")
 }
 
 pub fn model_select_prompt(models: &[String]) -> String {
@@ -41,7 +41,7 @@ pub fn model_select_prompt(models: &[String]) -> String {
     )
     .with_page_size(20)
     .prompt()
-    .expect("Failed to select model");
+    .expect("User cancelled");
 
     sel
 }
@@ -49,7 +49,7 @@ pub fn model_select_prompt(models: &[String]) -> String {
 pub fn manual_model_prompt() -> String {
     inquire::Text::new("Masukkan ID model secara manual (contoh: anthropic/claude-3-haiku):")
         .prompt()
-        .expect("Failed to read manual model ID")
+        .expect("User cancelled")
 }
 
 pub fn save_confirmation() {

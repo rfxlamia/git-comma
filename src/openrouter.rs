@@ -4,7 +4,6 @@ use std::fmt;
 #[derive(Debug, Deserialize)]
 pub struct Model {
     pub id: String,
-    pub name: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -34,12 +33,6 @@ impl fmt::Display for ApiError {
             ApiError::ParseError => write!(f, "Parse error"),
             ApiError::EmptyResponse => write!(f, "Empty response"),
         }
-    }
-}
-
-impl ApiError {
-    pub fn is_retryable(&self) -> bool {
-        matches!(self, ApiError::RateLimited | ApiError::NetworkError(_))
     }
 }
 
