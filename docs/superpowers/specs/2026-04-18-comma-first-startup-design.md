@@ -20,6 +20,10 @@
 - `api_key`: OpenRouter API key (Bearer token)
 - `model_id`: Selected model identifier (e.g., `anthropic/claude-3-haiku`)
 
+**File creation:**
+- Write to a temp file first (`~/.comma.json.tmp`), then atomically rename to `~/.comma.json` via `std::fs::rename`. This prevents corruption if the process crashes mid-write.
+- Set file permissions to `0o600` (owner read/write only) to protect the API key from being read by other users on the system.
+
 ---
 
 ## First Startup Flow
@@ -30,7 +34,7 @@ comma invoked
     ▼
 Check ~/.comma.json exists?
     │
-    ├── YES → Skip to main auto-commit flow (out of scope for this spec)
+    ├── YES → Validate file is valid JSON. If corrupted/malformed, treat as NO (delete and re-run setup).
     │
     └── NO ↓
 
@@ -79,8 +83,12 @@ Authorization: Bearer <api_key>
 **Success:** Parse JSON response. Extract each model's `id` and `name` fields. Build display list as `"provider/model-name"`.
 
 **Failure handling:**
-- `401 Unauthorized` → `match` on response error, clear screen, print helpful error message, loop back to API key prompt
-- Network error → print error, allow retry (loop)
+- `401 Unauthorized` → API key is invalid. Clear screen, print error, loop back to API key prompt.
+- `403 Forbidden` → API key lacks permissions for this endpoint. Clear screen, print error, loop back to API key prompt.
+- `429 Too Many Requests` → Rate limited. Print error with retry instruction, allow retry after user acknowledges.
+- Other HTTP errors → Print generic error, allow retry (loop).
+- Network error → Print error, allow retry (loop).
+- **Empty model list** → If OpenRouter returns an empty list, print a helpful message ("Tidak ada model tersedia") and allow retry.
 
 ---
 
@@ -88,13 +96,14 @@ Authorization: Bearer <api_key>
 
 | Element | Behavior |
 |---------|----------|
-| API key input | `PasswordDisplayMode::Masked` — terminal shows `********` only |
+| API key input | `Password::new()` with `PasswordDisplayMode::Masked` — terminal shows `********` only |
 | Model list | Full list from OpenRouter, no truncation |
 | Fuzzy filter | Built-in via `inquire::Select` — type to filter automatically |
 | Manual option | Top of list, triggers `Text::new()` free-text input on selection |
 | Error message | Clear and actionable — explains what went wrong |
 | Re-prompt on error | Clean loop — clear screen, show error, re-ask |
 | Welcome message | Brief, friendly greeting on first run |
+| Save confirmation | After saving, print brief confirmation (e.g., "Konfigurasi disimpan!") before continuing |
 
 ---
 
