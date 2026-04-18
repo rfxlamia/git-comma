@@ -72,3 +72,34 @@ pub fn models_loaded(count: usize) {
 pub fn rate_limited_message() {
     error_message("Terlalu banyak permintaan. Mohon tunggu sebentar dan coba lagi.");
 }
+
+pub fn confirm_large_diff(size: usize) -> bool {
+    println!();
+    println!("⚠️ Diff terlalu besar ({} karakter).", size);
+    println!();
+    println!("Commit dengan diff sebanyak ini merupakan anti-pattern Git:");
+    println!("- Kemungkinan me-stage file yang tidak seharusnya (lock files, dist/)");
+    println!("- Sebaiknya dipecah menjadi commit yang lebih kecil per fitur");
+    println!();
+    inquire::Confirm::new("Tetap lanjut?")
+        .with_default(false)
+        .prompt()
+        .unwrap_or(false)
+}
+
+pub fn print_unstaged_files(files: &[crate::preflight::UnstagedFile]) {
+    println!("⚠️ Tidak ada file yang di-stage untuk di-commit.");
+    println!();
+    println!("File yang berubah tapi belum di-stage:");
+    for file in files {
+        println!(" {} {}", file.status, file.path);
+    }
+    println!();
+}
+
+pub fn prompt_git_add() -> bool {
+    inquire::Confirm::new("Apakah kamu ingin melakukan 'git add .' sekarang?")
+        .with_default(true)
+        .prompt()
+        .unwrap_or(false)
+}
