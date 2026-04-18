@@ -103,7 +103,7 @@ fn main() {
     let mut draft = loop {
         attempt += 1;
         print!("⏳ Analyzing the diff and crafting the commit message...");
-        std::io::Write::flush(&mut std::io::stdout()).unwrap();
+        std::io::Write::flush(&mut std::io::stdout()).ok();
 
         match crate::ai::run_ai_engine(
             &working_config.api_key,
@@ -111,49 +111,9 @@ fn main() {
             &_preflight_result.diff_content,
         ) {
             Ok(d) => break d,
-            Err(crate::ai::AiError::ModelUnavailable(_)) => {
+            Err(crate::ai::AiError::ModelUnavailable(ref msg)) | Err(crate::ai::AiError::RateLimitExceeded(ref msg)) => {
                 if attempt >= max_attempts {
-                    eprintln!("\n❌ Model unavailable after {} attempts.", max_attempts);
-                    eprintln!("💡 Continuing in manual editor mode...");
-                    match crate::ai::open_editor("") {
-                        Ok(content) => break content,
-                        Err(e) => {
-                            eprintln!("Editor error: {}", e);
-                            std::process::exit(1);
-                        }
-                    }
-                }
-                if ui::prompt_model_switch(&working_config.model_id) {
-                    match setup::reconfigure_model_silent(&working_config.api_key) {
-                        Ok(new_model) => {
-                            working_config.model_id = new_model;
-                            continue;
-                        }
-                        Err(ConfigError::Unauthorized) => {
-                            eprintln!("\n⚠️ Your API key is invalid or expired.");
-                            eprintln!("Re-entering setup flow...");
-                            let new_config = setup::run_first_startup();
-                            working_config = new_config;
-                            continue;
-                        }
-                        Err(_) => {
-                            eprintln!("Failed to fetch models. Please try again.");
-                            std::process::exit(1);
-                        }
-                    }
-                }
-                eprintln!("\n💡 Continuing in manual editor mode...");
-                match crate::ai::open_editor("") {
-                    Ok(content) => break content,
-                    Err(e) => {
-                        eprintln!("Editor error: {}", e);
-                        std::process::exit(1);
-                    }
-                }
-            }
-            Err(crate::ai::AiError::RateLimitExceeded(_)) => {
-                if attempt >= max_attempts {
-                    eprintln!("\n❌ Rate limited after {} attempts.", max_attempts);
+                    eprintln!("\n❌ {} after {} attempts.", msg, max_attempts);
                     eprintln!("💡 Continuing in manual editor mode...");
                     match crate::ai::open_editor("") {
                         Ok(content) => break content,
