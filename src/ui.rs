@@ -57,7 +57,7 @@ pub fn save_confirmation() {
 
 pub fn fetching_models_message() {
     print!("Fetching model list from OpenRouter...");
-    std::io::Write::flush(&mut std::io::stdout()).unwrap();
+    std::io::Write::flush(&mut std::io::stdout()).ok();
 }
 
 pub fn models_loaded(count: usize) {
