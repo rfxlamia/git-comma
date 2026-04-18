@@ -47,6 +47,9 @@ ureq = "3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 home = "0.4"
+
+[dev-dependencies]
+tempfile = "3"
 ```
 
 - [ ] **Step 2: Create stub `src/main.rs`**
@@ -219,18 +222,7 @@ git commit -m "feat: add config module with atomic write and 0o600 permissions"
 **Files:**
 - Create: `src/openrouter.rs`
 
-- [ ] **Step 1: Write failing test for `fetch_models()` success**
-
-```rust
-#[test]
-fn test_fetch_models_deserializes_response() {
-    // This test is challenging to write without mocking.
-    // We'll do an integration test that hits the real API if OPENROUTER_API_KEY is set.
-    // For unit tests, we test the response parsing logic separately.
-}
-```
-
-Skip unit test — `ureq` doesn't have easy mocking. We'll test via the integration test in Task 4.
+Skip unit test for `fetch_models()` — `ureq` doesn't have easy mocking. Tested via the integration test in Task 5 instead.
 
 - [ ] **Step 2: Write the OpenRouter client structs in `src/openrouter.rs`**
 
@@ -256,6 +248,7 @@ pub enum ApiError {
     HttpError(u16),
     NetworkError(String),
     ParseError,
+    EmptyResponse,
 }
 
 impl ApiError {
@@ -290,6 +283,10 @@ impl Client {
         let models_resp: ModelsResponse = resp
             .into_json()
             .map_err(|_| ApiError::ParseError)?;
+
+        if models_resp.data.is_empty() {
+            return Err(ApiError::EmptyResponse);
+        }
 
         Ok(models_resp.data)
     }
@@ -447,14 +444,16 @@ pub fn run_first_startup() -> Config {
             }
             Err(ApiError::Unauthorized) => {
                 ui::error_message("API Key tidak valid. Pastikan Anda memasukkan key yang benar.");
-                let new_key = ui::api_key_prompt();
-                break api_key = new_key; // This won't work in Rust — need restructure
+                api_key = ui::api_key_prompt();
             }
             Err(ApiError::Forbidden) => {
                 ui::error_message("API Key tidak memiliki akses. Periksa permissions di OpenRouter.");
             }
             Err(ApiError::RateLimited) => {
                 ui::rate_limited_message();
+            }
+            Err(ApiError::EmptyResponse) => {
+                ui::error_message("Tidak ada model tersedia dari OpenRouter. Silakan coba lagi.");
             }
             Err(e) => {
                 ui::error_message(&format!("Gagal mengambil model: {}. Silakan coba lagi.", e));
@@ -468,58 +467,6 @@ pub fn run_first_startup() -> Config {
 
     ui::save_confirmation();
 
-    config
-}
-```
-
-**Correction:** The `break` with assignment above doesn't work in Rust. Refactor as:
-
-```rust
-pub fn run_first_startup() -> Config {
-    ui::welcome_message();
-
-    let mut api_key = ui::api_key_prompt();
-
-    let config = loop {
-        ui::fetching_models_message();
-
-        let client = Client::new(api_key.clone());
-        match client.fetch_models() {
-            Ok(models) => {
-                let model_ids: Vec<String> = models.iter().map(|m| m.id.clone()).collect();
-                ui::models_loaded(model_ids.len());
-
-                let selection = ui::model_select_prompt(&model_ids);
-                let model_id = if selection == "[ Ketik Manual ID Model... ]" {
-                    ui::manual_model_prompt()
-                } else {
-                    selection
-                };
-
-                break Config {
-                    api_key,
-                    model_id,
-                };
-            }
-            Err(ApiError::Unauthorized) => {
-                ui::error_message("API Key tidak valid. Pastikan Anda memasukkan key yang benar.");
-                api_key = ui::api_key_prompt();
-            }
-            Err(ApiError::Forbidden) => {
-                ui::error_message("API Key tidak memiliki akses. Periksa permissions di OpenRouter.");
-            }
-            Err(ApiError::RateLimited) => {
-                ui::rate_limited_message();
-            }
-            Err(e) => {
-                ui::error_message(&format!("Gagal mengambil model: {}. Silakan coba lagi.", e));
-            }
-        }
-    };
-
-    let path = home_config_path();
-    config.save(&path).expect("Failed to save config");
-    ui::save_confirmation();
     config
 }
 ```
@@ -554,7 +501,6 @@ fn main() {
         setup::run_first_startup()
     };
 
-    // TODO: Pass config to main commit flow (out of scope for this spec)
     println!("Config loaded: model_id = {}", config.model_id);
 }
 ```
@@ -578,14 +524,7 @@ git commit -m "feat: implement first startup flow with API key verification and 
 **Files:**
 - Create: `tests/integration_tests.rs`
 
-- [ ] **Step 1: Add `tempfile` dev-dependency to `Cargo.toml`**
-
-```toml
-[dev-dependencies]
-tempfile = "3"
-```
-
-- [ ] **Step 2: Write integration test for corrupted JSON recovery**
+- [ ] **Step 1: Write integration test for corrupted JSON recovery**
 
 ```rust
 use std::fs;
@@ -605,10 +544,10 @@ fn test_corrupted_json_triggers_setup() {
     let content = fs::read_to_string(&path).unwrap();
     assert!(!content.is_empty());
 
-    // When loading, malformed JSON should be detected
-    let result: Result<comma_cli::config::Config, _> =
-        serde_json::from_str(&content);
+    // When loading via Config::load_from_path, malformed JSON should be detected
+    let result = comma_cli::config::Config::load_from_path(&path);
     assert!(result.is_err());
+    assert!(matches!(result.unwrap_err(), comma_cli::config::ConfigError::MalformedJson));
 
     fs::remove_file(&path).ok();
 }
@@ -636,23 +575,13 @@ git commit -m "test: add integration tests for config handling"
 | First startup flow (greeting → key → fetch → select → save) | Task 4a, 4b |
 | API call to OpenRouter with error handling | Task 3 |
 | 401/403/429 handling + retry | Task 3, Task 4b |
-| Empty model list | Task 3 (add check) |
+| Empty model list (`EmptyResponse` error + handling) | Task 3 |
 | `PasswordDisplayMode::Masked` for API key | Task 4a |
 | Full model list, no truncation | Task 4b |
 | Fuzzy filter via `inquire::Select` | Task 4a |
 | "Ketik Manual" option at top | Task 4a |
 | Save confirmation message | Task 4a |
 | Corrupted JSON detection | Task 4b (`main.rs`) |
-
-**Gap found:** `empty model list` check not explicitly in `openrouter.rs`. Add to Task 3 Step 2:
-
-```rust
-if models_resp.data.is_empty() {
-    return Err(ApiError::EmptyResponse);
-}
-```
-
-And add `EmptyResponse` variant to `ApiError`.
 
 ---
 
