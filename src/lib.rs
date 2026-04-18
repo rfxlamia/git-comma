@@ -1,4 +1,4 @@
 pub mod config;
-// pub mod openrouter;
-// pub mod setup;
-// pub mod ui;
+pub mod openrouter;
+pub mod setup;
+pub mod ui;
