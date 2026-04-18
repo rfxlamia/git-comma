@@ -2,4 +2,4 @@
 target/
 docs/
 !docs/contributing/
-_experiments/
+_experimental/
