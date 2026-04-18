@@ -35,13 +35,10 @@ pub fn model_select_prompt(models: &[String]) -> String {
     let mut options: Vec<String> = vec!["[ Ketik Manual ID Model... ]".to_string()];
     options.extend(models.iter().cloned());
 
-    let sel = Select::new(
-        "Pilih model (ketik untuk mencari):",
-        options,
-    )
-    .with_page_size(20)
-    .prompt()
-    .expect("User cancelled");
+    let sel = Select::new("Pilih model (ketik untuk mencari):", options)
+        .with_page_size(20)
+        .prompt()
+        .expect("User cancelled");
 
     sel
 }

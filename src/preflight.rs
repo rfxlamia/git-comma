@@ -5,7 +5,10 @@ pub enum PreflightError {
     #[error("Not a git repository")]
     NotGitRepo,
     #[error("Git command failed: {command}")]
-    GitCommandFailed { command: String, source: std::io::Error },
+    GitCommandFailed {
+        command: String,
+        source: std::io::Error,
+    },
     #[error("No staged files")]
     NoStagedFiles { unstaged: Vec<UnstagedFile> },
     #[error("Diff too large: {size} chars")]
@@ -53,7 +56,9 @@ fn get_unstaged_files() -> Result<Vec<UnstagedFile>, std::io::Error> {
         .lines()
         .filter_map(|line| {
             let status = line.chars().next()?;
-            let path = line.strip_prefix(format!("{} ", status).as_str()).map(|p| p.trim())?;
+            let path = line
+                .strip_prefix(format!("{} ", status).as_str())
+                .map(|p| p.trim())?;
             Some(UnstagedFile {
                 status: status.to_string(),
                 path: path.to_string(),
@@ -97,7 +102,9 @@ pub fn run() -> Result<PreflightSuccess, PreflightError> {
     })?;
 
     if diff_content.len() > SOFT_DIFF_LIMIT {
-        return Err(PreflightError::DiffTooLarge { size: diff_content.len() });
+        return Err(PreflightError::DiffTooLarge {
+            size: diff_content.len(),
+        });
     }
 
     Ok(PreflightSuccess { diff_content })
