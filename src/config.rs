@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -38,6 +39,16 @@ pub enum ConfigError {
     IoError(std::io::Error),
     MalformedJson,
     MissingFile,
+}
+
+impl fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ConfigError::IoError(e) => write!(f, "IO error: {}", e),
+            ConfigError::MalformedJson => write!(f, "Malformed JSON"),
+            ConfigError::MissingFile => write!(f, "Missing file"),
+        }
+    }
 }
 
 impl From<std::io::Error> for ConfigError {

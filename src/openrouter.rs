@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::fmt;
 
 #[derive(Debug, Deserialize)]
 pub struct Model {
@@ -20,6 +21,20 @@ pub enum ApiError {
     NetworkError(String),
     ParseError,
     EmptyResponse,
+}
+
+impl fmt::Display for ApiError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ApiError::Unauthorized => write!(f, "Unauthorized"),
+            ApiError::Forbidden => write!(f, "Forbidden"),
+            ApiError::RateLimited => write!(f, "Rate limited"),
+            ApiError::HttpError(code) => write!(f, "HTTP error {}", code),
+            ApiError::NetworkError(msg) => write!(f, "Network error: {}", msg),
+            ApiError::ParseError => write!(f, "Parse error"),
+            ApiError::EmptyResponse => write!(f, "Empty response"),
+        }
+    }
 }
 
 impl ApiError {
