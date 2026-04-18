@@ -1,4 +1,4 @@
-use crate::config::{Config, home_config_path};
+use crate::config::{home_config_path, Config};
 use crate::openrouter::{ApiError, Client};
 use crate::ui;
 
@@ -23,17 +23,16 @@ pub fn run_first_startup() -> Config {
                     selection
                 };
 
-                break Config {
-                    api_key,
-                    model_id,
-                };
+                break Config { api_key, model_id };
             }
             Err(ApiError::Unauthorized) => {
                 ui::error_message("API Key tidak valid. Pastikan Anda memasukkan key yang benar.");
                 api_key = ui::api_key_prompt();
             }
             Err(ApiError::Forbidden) => {
-                ui::error_message("API Key tidak memiliki akses. Periksa permissions di OpenRouter.");
+                ui::error_message(
+                    "API Key tidak memiliki akses. Periksa permissions di OpenRouter.",
+                );
             }
             Err(ApiError::RateLimited) => {
                 ui::rate_limited_message();

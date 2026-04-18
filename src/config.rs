@@ -10,7 +10,8 @@ pub struct Config {
 impl Config {
     pub fn load_from_path(path: &std::path::Path) -> Result<Self, ConfigError> {
         let content = std::fs::read_to_string(path)?;
-        let config: Config = serde_json::from_str(&content).map_err(|_| ConfigError::MalformedJson)?;
+        let config: Config =
+            serde_json::from_str(&content).map_err(|_| ConfigError::MalformedJson)?;
         Ok(config)
     }
 

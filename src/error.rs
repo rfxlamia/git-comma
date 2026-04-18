@@ -1,0 +1,23 @@
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+#[allow(dead_code)]
+pub enum AiError {
+    #[error("API error: {0}")]
+    Api(String),
+    #[error("Network error: {0}")]
+    Network(String),
+    #[error("Empty response from API")]
+    EmptyResponse,
+}
+
+#[derive(Debug, Error)]
+#[allow(dead_code)]
+pub enum CommitError {
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("Git hook failed: {0}")]
+    HookFailed(String),
+    #[error("Invalid path: {0}")]
+    InvalidPath(String),
+}

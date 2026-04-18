@@ -72,4 +72,50 @@ impl Client {
 
         Ok(models_resp.data)
     }
+
+    /// Generate commit message from diff content via OpenRouter chat completions.
+    pub fn generate_commit_message(&self, payload: &serde_json::Value) -> Result<String, ApiError> {
+        let mut resp = ureq::post("https://openrouter.ai/api/v1/chat/completions")
+            .header("Authorization", &format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .send_json(payload)
+            .map_err(|e: ureq::Error| ApiError::NetworkError(e.to_string()))?;
+
+        let status_u16: u16 = resp.status().into();
+        match status_u16 {
+            200 => {}
+            401 => return Err(ApiError::Unauthorized),
+            403 => return Err(ApiError::Forbidden),
+            429 => return Err(ApiError::RateLimited),
+            code => return Err(ApiError::HttpError(code)),
+        }
+
+        #[derive(Deserialize)]
+        struct MessageContent {
+            content: Option<String>,
+        }
+
+        #[derive(Deserialize)]
+        struct Choice {
+            message: MessageContent,
+        }
+
+        #[derive(Deserialize)]
+        struct ChatResponse {
+            choices: Vec<Choice>,
+        }
+
+        let chat_resp: ChatResponse = resp
+            .body_mut()
+            .read_json()
+            .map_err(|_| ApiError::ParseError)?;
+
+        chat_resp
+            .choices
+            .into_iter()
+            .next()
+            .and_then(|c| c.message.content)
+            .filter(|s| !s.trim().is_empty())
+            .ok_or(ApiError::EmptyResponse)
+    }
 }
