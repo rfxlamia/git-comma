@@ -70,6 +70,17 @@ pub fn rate_limited_message() {
     error_message("Too many requests. Please wait a moment and try again.");
 }
 
+pub fn prompt_model_switch(model_name: &str) -> bool {
+    println!();
+    println!("❌ Oops! API Error");
+    println!("The provider rejected the request for the '{}' model.", model_name);
+    println!();
+    inquire::Confirm::new("Do you want to change the AI model now?")
+        .with_default(true)
+        .prompt()
+        .unwrap_or(false)
+}
+
 pub fn confirm_large_diff(size: usize) -> bool {
     println!();
     println!("⚠️ Diff too large ({} characters).", size);
