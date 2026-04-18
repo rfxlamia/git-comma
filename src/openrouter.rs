@@ -49,7 +49,10 @@ impl Client {
         let mut resp = ureq::get("https://openrouter.ai/api/v1/models")
             .header("Authorization", &format!("Bearer {}", self.api_key))
             .call()
-            .map_err(|e: ureq::Error| ApiError::NetworkError(e.to_string()))?;
+            .map_err(|e: ureq::Error| match e {
+                ureq::Error::StatusCode(code) => ApiError::HttpError(code),
+                other => ApiError::NetworkError(other.to_string()),
+            })?;
 
         let status_u16: u16 = resp.status().into();
         if status_u16 != 200 {
@@ -79,7 +82,10 @@ impl Client {
             .header("Authorization", &format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
             .send_json(payload)
-            .map_err(|e: ureq::Error| ApiError::NetworkError(e.to_string()))?;
+            .map_err(|e: ureq::Error| match e {
+                ureq::Error::StatusCode(code) => ApiError::HttpError(code),
+                other => ApiError::NetworkError(other.to_string()),
+            })?;
 
         let status_u16: u16 = resp.status().into();
         match status_u16 {
