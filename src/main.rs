@@ -88,6 +88,7 @@ fn main() {
                     }
                 }
             } else {
+                eprintln!("\n❌ Dibatalkan. Stage file yang lebih sedikit dan coba lagi.");
                 std::process::exit(1);
             }
         }
