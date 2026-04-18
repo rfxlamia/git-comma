@@ -9,7 +9,7 @@ mod setup;
 mod tui; // NEW: AI TUI
 mod ui;
 
-use config::{home_config_path, Config};
+use config::{home_config_path, Config, ConfigError};
 
 fn run_git_add() -> bool {
     std::process::Command::new("git")
@@ -22,7 +22,7 @@ fn run_git_add() -> bool {
 fn main() {
     let config_path = home_config_path();
 
-    let _config = if config_path.exists() {
+    let config = if config_path.exists() {
         match Config::load_from_path(&config_path) {
             Ok(cfg) => cfg,
             Err(crate::config::ConfigError::MalformedJson) => {
@@ -94,53 +94,144 @@ fn main() {
         }
     };
 
-    // TODO: Pass preflight_result.diff_content to AI commit generation
-    println!("AI working..."); // Placeholder
+    // Recovery Loop: obtain valid draft with bounded retry
+    let config_path = home_config_path();
+    let mut working_config = config.clone();
+    let mut attempt = 0;
+    let max_attempts = 3;
 
-    // Run AI engine
-    // Note: existing main.rs binds config as `_config`, so we use `_config`
-    let mut draft = match crate::ai::run_ai_engine(
-        &_config.api_key,
-        &_config.model_id,
-        &_preflight_result.diff_content,
-    ) {
-        Ok(draft) => draft,
-        Err(crate::ai::AiError::Api(msg)) => {
-            eprintln!("\n❌ Failed to contact OpenRouter ({})", msg);
-            eprintln!("💡 Continue writing manually in Editor?");
-            if inquire::Confirm::new("Open editor?")
-                .with_default(true)
-                .prompt()
-                .unwrap_or(false)
-            {
+    let mut draft = loop {
+        attempt += 1;
+        print!("⏳ Analyzing the diff and crafting the commit message...");
+        std::io::Write::flush(&mut std::io::stdout()).unwrap();
+
+        match crate::ai::run_ai_engine(
+            &working_config.api_key,
+            &working_config.model_id,
+            &_preflight_result.diff_content,
+        ) {
+            Ok(d) => break d,
+            Err(crate::ai::AiError::ModelUnavailable(_)) => {
+                if attempt >= max_attempts {
+                    eprintln!("\n❌ Model unavailable after {} attempts.", max_attempts);
+                    eprintln!("💡 Continuing in manual editor mode...");
+                    match crate::ai::open_editor("") {
+                        Ok(content) => break content,
+                        Err(e) => {
+                            eprintln!("Editor error: {}", e);
+                            std::process::exit(1);
+                        }
+                    }
+                }
+                if ui::prompt_model_switch(&working_config.model_id) {
+                    match setup::reconfigure_model_silent(&working_config.api_key) {
+                        Ok(new_model) => {
+                            working_config.model_id = new_model;
+                            continue;
+                        }
+                        Err(ConfigError::Unauthorized) => {
+                            eprintln!("\n⚠️ Your API key is invalid or expired.");
+                            eprintln!("Re-entering setup flow...");
+                            let new_config = setup::run_first_startup();
+                            working_config = new_config;
+                            continue;
+                        }
+                        Err(_) => {
+                            eprintln!("Failed to fetch models. Please try again.");
+                            std::process::exit(1);
+                        }
+                    }
+                }
+                eprintln!("\n💡 Continuing in manual editor mode...");
                 match crate::ai::open_editor("") {
-                    Ok(content) => content,
+                    Ok(content) => break content,
                     Err(e) => {
                         eprintln!("Editor error: {}", e);
                         std::process::exit(1);
                     }
                 }
-            } else {
-                std::process::exit(1);
+            }
+            Err(crate::ai::AiError::RateLimitExceeded(_)) => {
+                if attempt >= max_attempts {
+                    eprintln!("\n❌ Rate limited after {} attempts.", max_attempts);
+                    eprintln!("💡 Continuing in manual editor mode...");
+                    match crate::ai::open_editor("") {
+                        Ok(content) => break content,
+                        Err(e) => {
+                            eprintln!("Editor error: {}", e);
+                            std::process::exit(1);
+                        }
+                    }
+                }
+                if ui::prompt_model_switch(&working_config.model_id) {
+                    match setup::reconfigure_model_silent(&working_config.api_key) {
+                        Ok(new_model) => {
+                            working_config.model_id = new_model;
+                            continue;
+                        }
+                        Err(ConfigError::Unauthorized) => {
+                            eprintln!("\n⚠️ Your API key is invalid or expired.");
+                            eprintln!("Re-entering setup flow...");
+                            let new_config = setup::run_first_startup();
+                            working_config = new_config;
+                            continue;
+                        }
+                        Err(_) => {
+                            eprintln!("Failed to fetch models. Please try again.");
+                            std::process::exit(1);
+                        }
+                    }
+                }
+                eprintln!("\n💡 Continuing in manual editor mode...");
+                match crate::ai::open_editor("") {
+                    Ok(content) => break content,
+                    Err(e) => {
+                        eprintln!("Editor error: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+            Err(crate::ai::AiError::Network(_)) => {
+                eprintln!("\n❌ Network error. Continuing in manual editor mode...");
+                match crate::ai::open_editor("") {
+                    Ok(content) => break content,
+                    Err(e) => {
+                        eprintln!("Editor error: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+            Err(crate::ai::AiError::EmptyResponse) => {
+                eprintln!("\n❌ Empty response from API. Continuing in manual editor mode...");
+                match crate::ai::open_editor("") {
+                    Ok(content) => break content,
+                    Err(e) => {
+                        eprintln!("Editor error: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+            Err(crate::ai::AiError::Api(_)) => {
+                eprintln!("\n❌ Failed to contact OpenRouter. Continuing in manual editor mode...");
+                match crate::ai::open_editor("") {
+                    Ok(content) => break content,
+                    Err(e) => {
+                        eprintln!("Editor error: {}", e);
+                        std::process::exit(1);
+                    }
+                }
             }
         }
-        Err(crate::ai::AiError::EmptyResponse) => {
-            eprintln!("\n❌ Empty response from API. Try again or use the editor.");
-            std::process::exit(1);
-        }
-        Err(crate::ai::AiError::Network(msg)) => {
-            eprintln!("\n❌ Network error: {}", msg);
-            std::process::exit(1);
-        }
-        Err(crate::ai::AiError::ModelUnavailable(msg)) => {
-            eprintln!("\n❌ Model unavailable: {}", msg);
-            std::process::exit(1);
-        }
-        Err(crate::ai::AiError::RateLimitExceeded(msg)) => {
-            eprintln!("\n❌ Rate limit exceeded: {}", msg);
-            std::process::exit(1);
-        }
     };
+
+    // Lazy-save: persist new model if it changed
+    if working_config.model_id != config.model_id {
+        if let Err(e) = working_config.save(&config_path) {
+            eprintln!("Warning: Failed to save new model config: {}", e);
+        } else {
+            println!("✅ Model successfully changed!");
+        }
+    }
 
     // Show result
     println!("\n==================================================");
@@ -203,8 +294,8 @@ fn main() {
             Ok(crate::ai::Action::Regenerate) => match crate::ai::prompt_custom_instruction() {
                 Ok(instruction) => {
                     match crate::ai::regenerate_with_instruction(
-                        &_config.api_key,
-                        &_config.model_id,
+                        &working_config.api_key,
+                        &working_config.model_id,
                         &_preflight_result.diff_content,
                         &instruction,
                     ) {
