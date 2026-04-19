@@ -9,7 +9,17 @@ mod setup;
 mod tui; // NEW: AI TUI
 mod ui;
 
+use clap::Parser;
 use config::{home_config_path, Config, ConfigError};
+
+#[derive(Parser)]
+#[command(name = "comma")]
+#[command(version, about = "AI-powered git commit message generator")]
+struct Cli {
+    /// Run the interactive setup flow
+    #[arg(long)]
+    setup: bool,
+}
 
 fn fallback_editor() -> String {
     match crate::ai::open_editor("") {
@@ -37,23 +47,51 @@ fn run_git_add() -> bool {
 }
 
 fn main() {
-    let config_path = home_config_path();
+    let cli = Cli::parse();
 
-    let config = if config_path.exists() {
-        match Config::load_from_path(&config_path) {
-            Ok(cfg) => cfg,
-            Err(crate::config::ConfigError::MalformedJson) => {
-                eprintln!("Config corrupted. Deleting and re-setting up...");
-                std::fs::remove_file(&config_path).ok();
-                setup::run_first_startup()
-            }
+    if cli.setup {
+        match setup::run_setup_flow(false) {
+            Ok(_) => std::process::exit(0),
             Err(e) => {
-                eprintln!("Failed to read config: {}. Re-running setup...", e);
-                setup::run_first_startup()
+                eprintln!("❌ Setup failed: {}", e);
+                std::process::exit(1);
             }
         }
-    } else {
-        setup::run_first_startup()
+    }
+
+    let config_path = home_config_path();
+    let config = match Config::load_from_path(&config_path) {
+        Ok(cfg) => cfg,
+        Err(ConfigError::MalformedJson) => {
+            eprintln!("Config corrupted. Deleting and re-setting up...");
+            std::fs::remove_file(&config_path).ok();
+            match setup::run_setup_flow(true) {
+                Ok(cfg) => cfg,
+                Err(e) => {
+                    eprintln!("❌ Setup failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Err(_) if !config_path.exists() => {
+            match setup::run_setup_flow(true) {
+                Ok(cfg) => cfg,
+                Err(e) => {
+                    eprintln!("❌ Setup failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Failed to read config: {}. Re-running setup...", e);
+            match setup::run_setup_flow(true) {
+                Ok(cfg) => cfg,
+                Err(e) => {
+                    eprintln!("❌ Setup failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
     };
 
     // Pre-flight check
@@ -148,20 +186,27 @@ fn main() {
                 }
                 match ui::prompt_model_switch(&working_config.model_id) {
                 Ok(true) => {
-                    match setup::reconfigure_model_silent(&working_config.api_key) {
-                        Ok(new_model) => {
-                            working_config.model_id = new_model;
+                    match setup::run_setup_flow(false) {
+                        Ok(new_config) => {
+                            working_config = new_config;
                             continue;
                         }
                         Err(ConfigError::Unauthorized) => {
                             eprintln!("\n⚠️ Your API key is invalid or expired.");
                             eprintln!("Re-entering setup flow...");
-                            let new_config = setup::run_first_startup();
-                            working_config = new_config;
-                            continue;
+                            match setup::run_setup_flow(true) {
+                                Ok(new_config) => {
+                                    working_config = new_config;
+                                    continue;
+                                }
+                                Err(e) => {
+                                    eprintln!("❌ Setup failed: {}", e);
+                                    std::process::exit(1);
+                                }
+                            }
                         }
-                        Err(_) => {
-                            eprintln!("Failed to fetch models. Please try again.");
+                        Err(e) => {
+                            eprintln!("Failed to fetch models: {}", e);
                             std::process::exit(1);
                         }
                     }
