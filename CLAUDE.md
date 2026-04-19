@@ -20,21 +20,32 @@ cargo run          # Run the application
 
 ```
 src/
-├── main.rs        # Entry point; loads config or triggers first startup
+├── main.rs        # Entry point; orchestrates preflight → AI → commit flow
+├── lib.rs         # Re-exports AI engine components for integration tests
 ├── config.rs      # Config struct (api_key, model_id), load/save with atomic writes
-├── openrouter.rs  # OpenRouter API client for fetching models
-├── setup.rs       # First-startup flow: API key → model selection → save
-└── ui.rs          # User interface helpers (prompts, messages)
+├── openrouter.rs  # OpenRouter API client for model listing and chat completions
+├── setup.rs       # First-startup flow and model reconfiguration
+├── preflight.rs   # Git repo validation, staged file checks, diff size limits
+├── ai.rs          # AI engine: orchestrates prompt building, API calls, sanitization
+├── prompt.rs      # Builds OpenRouter API payload from diff content
+├── sanitization.rs # Cleans/safeguards AI response before use
+├── tui.rs         # Terminal UI: editor integration, action prompts (accept/edit/regenerate)
+├── ui.rs          # User interface helpers (prompts, messages)
+└── error.rs       # AI error types (ApiError, RateLimitExceeded, Network, etc.)
 ```
 
-**Flow:** `main.rs` checks for `~/.comma.json` → if missing/malformed, delegates to `setup::run_first_startup()` which uses `openrouter::Client` to fetch available models and `ui` for prompts.
+**Main flow:** `main.rs` checks for `~/.comma.json` → if missing/malformed, calls `setup::run_first_startup()`. On valid config: preflight checks → `ai::run_ai_engine()` → action loop (accept/edit/regenerate) → `git commit -F`.
+
+**Lib exports (`lib.rs`):** Exposes AI engine components so integration tests can call `run_ai_engine`, `commit_with_draft`, etc. without depending on `main.rs`.
 
 ## Key Patterns
 
 - Config file: `~/.comma.json` (created on first run)
 - Permissions: 0o600 (readable only by owner) on Unix
 - Atomic writes: write to `.json.tmp` then rename
-- API errors: `Unauthorized` (401), `Forbidden` (403), `RateLimited` (429) are handled specially in setup flow
+- API errors: `Unauthorized` (401), `Forbidden` (403), `RateLimited` (429) trigger model switch or re-setup flow
+- Soft diff limit: 15,000 chars (`SOFT_DIFF_LIMIT` in `preflight.rs`) — user can bypass
+- Safety net: draft saved to `.git/comma_msg.txt` before commit attempt; survives hook failures
 
 ## Behavioral Guidelines
 
