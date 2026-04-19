@@ -1,6 +1,6 @@
 [package]
 name = "git-comma"
-version = "1.0.4"
+version = "1.0.5"
 edition = "2021"
 description = "AI-powered git commit message generator using OpenRouter API"
 license = "MIT"
@@ -11,12 +11,12 @@ name = "comma"
 path = "src/main.rs"
 
 [dependencies]
-inquire = { version = "0.5", features = ["editor"] }
+inquire = { version = "0.9", features = ["editor"] }
 thiserror = "2"
 ureq = { version = "3", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-home = "0.4"
+home = "0.5"
 clap = { version = "4", features = ["derive"] }
 colored = "2"
 

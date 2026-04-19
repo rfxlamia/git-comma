@@ -169,7 +169,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_unstaged_file_parse_status_M() {
+    fn test_unstaged_file_parse_status_m() {
         let file = UnstagedFile {
             status: "M".to_string(),
             path: "src/main.rs".to_string(),
@@ -179,7 +179,7 @@ mod tests {
     }
 
     #[test]
-    fn test_unstaged_file_parse_status_UU() {
+    fn test_unstaged_file_parse_status_uu() {
         let file = UnstagedFile {
             status: "??".to_string(),
             path: ".env.example".to_string(),
