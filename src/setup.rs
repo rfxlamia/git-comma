@@ -17,7 +17,7 @@ pub fn run_first_startup() -> Config {
                 ui::models_loaded(model_ids.len());
 
                 let selection = ui::model_select_prompt(&model_ids);
-                let model_id = if selection == "[ Ketik Manual ID Model... ]" {
+                let model_id = if selection == "[ Type Manual Model ID... ]" {
                     ui::manual_model_prompt()
                 } else {
                     selection
