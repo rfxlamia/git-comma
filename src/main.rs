@@ -191,8 +191,8 @@ fn main() {
                             working_config = new_config;
                             continue;
                         }
-                        Err(ConfigError::Unauthorized) => {
-                            eprintln!("\n⚠️ Your API key is invalid or expired.");
+                        Err(e) => {
+                            eprintln!("\n⚠️ Setup failed: {}", e);
                             eprintln!("Re-entering setup flow...");
                             match setup::run_setup_flow(true) {
                                 Ok(new_config) => {
@@ -204,10 +204,6 @@ fn main() {
                                     std::process::exit(1);
                                 }
                             }
-                        }
-                        Err(e) => {
-                            eprintln!("Failed to fetch models: {}", e);
-                            std::process::exit(1);
                         }
                     }
                 }

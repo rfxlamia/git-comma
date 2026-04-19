@@ -1,16 +1,3 @@
-use inquire::PasswordDisplayMode;
-
-pub fn welcome_message() {
-    println!();
-    println!("============================================");
-    println!("  Welcome to comma!");
-    println!("  AI-powered git commit generator.");
-    println!("============================================");
-    println!();
-    println!("First, we need a bit of configuration.");
-    println!();
-}
-
 pub fn error_message(message: &str) {
     eprintln!();
     eprintln!("============================================");
@@ -19,14 +6,6 @@ pub fn error_message(message: &str) {
     eprintln!();
     eprintln!("  {}", message);
     println!();
-}
-
-pub fn api_key_prompt() -> String {
-    inquire::Password::new("Enter OpenRouter API Key (sk-or-v1-...):")
-        .with_display_mode(PasswordDisplayMode::Masked)
-        .with_help_message("API key can be obtained at https://openrouter.ai/keys")
-        .prompt()
-        .expect("User cancelled")
 }
 
 pub fn model_select_prompt(models: &[String]) -> String {
