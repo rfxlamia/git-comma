@@ -64,7 +64,9 @@ fn main() {
         Ok(cfg) => cfg,
         Err(ConfigError::MalformedJson) => {
             eprintln!("Config corrupted. Deleting and re-setting up...");
-            std::fs::remove_file(&config_path).ok();
+            if let Err(e) = std::fs::remove_file(&config_path) {
+                eprintln!("Warning: Failed to delete corrupted config: {}. Will overwrite.", e);
+            }
             match setup::run_setup_flow(true) {
                 Ok(cfg) => cfg,
                 Err(e) => {

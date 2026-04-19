@@ -33,10 +33,11 @@ fn prompt_api_key(is_first_run: bool, existing_key: Option<&str>) -> String {
             if is_first_run {
                 ui::error_message("API key is required on first run. Please enter your key.");
                 continue;
+            } else if let Some(key) = existing_key {
+                return key.to_string();
             } else {
-                return existing_key
-                    .expect("existing_key must be Some when is_first_run=false")
-                    .to_string();
+                ui::error_message("No existing API key found. Please enter your key.");
+                continue;
             }
         }
         break password;
