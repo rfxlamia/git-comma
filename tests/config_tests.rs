@@ -1,6 +1,39 @@
-use std::io::Write;
-use std::path::Path;
 use tempfile::TempDir;
+
+#[test]
+fn test_config_load_preserves_api_key_field() {
+    let tmp = TempDir::new().unwrap();
+    let path = tmp.path().join("comma.json");
+
+    let cfg = git_comma::config::Config {
+        api_key: "sk-or-v1-test".to_string(),
+        model_id: "anthropic/claude-3-haiku".to_string(),
+    };
+    cfg.save(&path).unwrap();
+
+    let loaded = git_comma::config::Config::load_from_path(&path).unwrap();
+    assert_eq!(loaded.api_key, "sk-or-v1-test");
+    assert_eq!(loaded.model_id, "anthropic/claude-3-haiku");
+}
+
+#[test]
+fn test_load_config_malformed_json() {
+    let tmp = TempDir::new().unwrap();
+    let path = tmp.path().join("comma.json");
+    std::fs::write(&path, "{invalid json}").unwrap();
+
+    let result = git_comma::config::Config::load_from_path(&path);
+    assert!(matches!(result, Err(git_comma::config::ConfigError::MalformedJson)));
+}
+
+#[test]
+fn test_load_config_missing_file() {
+    let tmp = TempDir::new().unwrap();
+    let path = tmp.path().join("nonexistent.json");
+
+    let result = git_comma::config::Config::load_from_path(&path);
+    assert!(matches!(result, Err(git_comma::config::ConfigError::IoError(_))));
+}
 
 #[test]
 fn test_load_config_success() {
