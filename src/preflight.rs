@@ -57,15 +57,23 @@ fn get_unstaged_files() -> Result<Vec<UnstagedFile>, std::io::Error> {
     Ok(String::from_utf8_lossy(&output.stdout)
         .lines()
         .filter_map(|line| {
-            let mut parts = line.splitn(2, ' ');
-            let status = parts.next()?;
-            let path = parts.next().map(|p| p.trim()).unwrap_or("");
-            if status.is_empty() || path.is_empty() {
-                return None; // skip malformed line
+            let bytes = line.as_bytes();
+            if bytes.len() < 4 {
+                return None; // line too short: "M f" is min valid
+            }
+            // git status -s: col1=staged, col2=worktree, space, then path
+            // First char is staged status (or space if no staged change)
+            // Second char is worktree status (or space if no unstaged change)
+            let c1 = bytes[0] as char;
+            let c2 = bytes[1] as char;
+            let path = line[3..].to_string();
+            // Skip if both are spaces (no actual change) or path empty
+            if (c1 == ' ' && c2 == ' ') || path.is_empty() {
+                return None;
             }
             Some(UnstagedFile {
-                status: status.to_string(),
-                path: path.to_string(),
+                status: format!("{}{}", c1, c2),
+                path,
             })
         })
         .collect())
