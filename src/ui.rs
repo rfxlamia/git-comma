@@ -24,7 +24,7 @@ pub fn error_message(message: &str) {
 pub fn api_key_prompt() -> String {
     inquire::Password::new("Enter OpenRouter API Key (sk-or-v1-...):")
         .with_display_mode(PasswordDisplayMode::Masked)
-        .with_help_message("API key bisa diambil di https://openrouter.ai/keys")
+        .with_help_message("API key can be obtained at https://openrouter.ai/keys")
         .prompt()
         .expect("User cancelled")
 }
@@ -32,7 +32,7 @@ pub fn api_key_prompt() -> String {
 pub fn model_select_prompt(models: &[String]) -> String {
     use inquire::Select;
 
-    let mut options: Vec<String> = vec!["[ Ketik Manual ID Model... ]".to_string()];
+    let mut options: Vec<String> = vec!["[ Type Manual Model ID... ]".to_string()];
     options.extend(models.iter().cloned());
 
     let sel = Select::new("Select model (type to search):", options)
