@@ -59,6 +59,10 @@ fn main() {
     // Pre-flight check
     let _preflight_result = match preflight::run() {
         Ok(success) => success,
+        Err(preflight::PreflightError::WorkingTreeClean) => {
+            println!("✨ Working tree clean.");
+            std::process::exit(0);
+        }
         Err(preflight::PreflightError::NotGitRepo) => {
             eprintln!("Error: This is not a git repository.");
             std::process::exit(1);
@@ -77,6 +81,10 @@ fn main() {
                         Err(preflight::PreflightError::NoStagedFiles { .. }) => {
                             eprintln!("Still no files staged after git add.");
                             std::process::exit(1);
+                        }
+                        Err(preflight::PreflightError::WorkingTreeClean) => {
+                            println!("✨ Working tree clean.");
+                            std::process::exit(0);
                         }
                         Err(preflight::PreflightError::NotGitRepo) => {
                             eprintln!("Error: This is not a git repository.");

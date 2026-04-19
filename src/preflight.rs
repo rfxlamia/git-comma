@@ -11,6 +11,8 @@ pub enum PreflightError {
     },
     #[error("No staged files")]
     NoStagedFiles { unstaged: Vec<UnstagedFile> },
+    #[error("Working tree clean — nothing to commit")]
+    WorkingTreeClean,
     #[error("Diff too large: {size} chars")]
     DiffTooLarge { size: usize },
 }
@@ -76,6 +78,16 @@ fn get_diff_content() -> Result<String, std::io::Error> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+fn is_working_tree_clean() -> Result<bool, std::io::Error> {
+    let output = std::process::Command::new("git")
+        .args(["status", "--porcelain"])
+        .output()?;
+    let clean = String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .all(|line| line.trim().is_empty());
+    Ok(clean)
+}
+
 /// Runs pre-flight checks: git repo validity, staged files, diff size.
 ///
 /// Returns `Ok(PreflightSuccess)` with diff content if all checks pass.
@@ -83,6 +95,10 @@ fn get_diff_content() -> Result<String, std::io::Error> {
 pub fn run() -> Result<PreflightSuccess, PreflightError> {
     if !is_git_repo() {
         return Err(PreflightError::NotGitRepo);
+    }
+
+    if is_working_tree_clean().unwrap_or(false) {
+        return Err(PreflightError::WorkingTreeClean);
     }
 
     let staged = get_staged_files().map_err(|e| PreflightError::GitCommandFailed {
@@ -118,6 +134,11 @@ pub fn run_with_diff_bypass() -> Result<PreflightSuccess, PreflightError> {
     if !is_git_repo() {
         return Err(PreflightError::NotGitRepo);
     }
+
+    if is_working_tree_clean().unwrap_or(false) {
+        return Err(PreflightError::WorkingTreeClean);
+    }
+
     let staged = get_staged_files().map_err(|e| PreflightError::GitCommandFailed {
         command: "git diff --cached --name-only".into(),
         source: e,
