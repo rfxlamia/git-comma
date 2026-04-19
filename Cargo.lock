@@ -474,7 +474,7 @@ dependencies = [
 
 [[package]]
 name = "git-comma"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "clap",
  "colored",
