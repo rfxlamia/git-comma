@@ -48,8 +48,9 @@ pub fn run_setup_flow(is_first_run: bool) -> Result<Config, ConfigError> {
     print_splash_banner();
 
     let existing_key = if !is_first_run {
-        Config::load_from_path(&home_config_path())
+        home_config_path()
             .ok()
+            .and_then(|path| Config::load_from_path(&path).ok())
             .map(|c| c.api_key)
     } else {
         None
@@ -106,10 +107,8 @@ pub fn run_setup_flow(is_first_run: bool) -> Result<Config, ConfigError> {
         model_id,
     };
 
-    let path = home_config_path();
-    if let Err(e) = config.save(&path) {
-        eprintln!("Warning: Failed to save config: {}. Continuing anyway...", e);
-    }
+    let path = home_config_path()?;
+    config.save(&path)?;
 
     ui::save_confirmation();
     Ok(config)

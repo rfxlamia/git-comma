@@ -41,6 +41,7 @@ pub enum ConfigError {
     IoError(std::io::Error),
     MalformedJson,
     ApiError(String),
+    HomeNotFound,
 }
 
 impl fmt::Display for ConfigError {
@@ -49,6 +50,7 @@ impl fmt::Display for ConfigError {
             ConfigError::IoError(e) => write!(f, "IO error: {}", e),
             ConfigError::MalformedJson => write!(f, "Malformed JSON"),
             ConfigError::ApiError(msg) => write!(f, "API error: {}", msg),
+            ConfigError::HomeNotFound => write!(f, "Cannot find home directory"),
         }
     }
 }
@@ -65,7 +67,7 @@ impl From<serde_json::Error> for ConfigError {
     }
 }
 
-pub fn home_config_path() -> std::path::PathBuf {
-    let home = home::home_dir().expect("Cannot find home directory");
-    home.join(".comma.json")
+pub fn home_config_path() -> Result<std::path::PathBuf, ConfigError> {
+    let home = home::home_dir().ok_or(ConfigError::HomeNotFound)?;
+    Ok(home.join(".comma.json"))
 }

@@ -104,7 +104,10 @@ pub fn run() -> Result<PreflightSuccess, PreflightError> {
         return Err(PreflightError::NotGitRepo);
     }
 
-    if is_working_tree_clean().unwrap_or(false) {
+    if is_working_tree_clean().map_err(|e| PreflightError::GitCommandFailed {
+        command: "git status --porcelain".into(),
+        source: e,
+    })? {
         return Err(PreflightError::WorkingTreeClean);
     }
 
@@ -142,7 +145,10 @@ pub fn run_with_diff_bypass() -> Result<PreflightSuccess, PreflightError> {
         return Err(PreflightError::NotGitRepo);
     }
 
-    if is_working_tree_clean().unwrap_or(false) {
+    if is_working_tree_clean().map_err(|e| PreflightError::GitCommandFailed {
+        command: "git status --porcelain".into(),
+        source: e,
+    })? {
         return Err(PreflightError::WorkingTreeClean);
     }
 

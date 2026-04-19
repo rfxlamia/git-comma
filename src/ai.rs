@@ -92,7 +92,9 @@ pub fn commit_with_draft(draft: &str, repo_root: &Path) -> Result<(), CommitErro
     }
 
     // Remove backup on success
-    std::fs::remove_file(&backup_path).ok();
+    if let Err(e) = std::fs::remove_file(&backup_path) {
+        eprintln!("Warning: Failed to remove backup file: {}", e);
+    }
 
     Ok(())
 }

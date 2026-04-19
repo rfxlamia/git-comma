@@ -59,7 +59,7 @@ fn main() {
         }
     }
 
-    let config_path = home_config_path();
+    let config_path = home_config_path().expect("Failed to determine config path");
     let config = match Config::load_from_path(&config_path) {
         Ok(cfg) => cfg,
         Err(ConfigError::MalformedJson) => {
@@ -97,7 +97,7 @@ fn main() {
     };
 
     // Pre-flight check
-    let _preflight_result = match preflight::run() {
+    let preflight_result = match preflight::run() {
         Ok(success) => success,
         Err(preflight::PreflightError::WorkingTreeClean) => {
             println!("✨ Working tree clean.");
@@ -174,7 +174,7 @@ fn main() {
         match crate::ai::run_ai_engine(
             &working_config.api_key,
             &working_config.model_id,
-            &_preflight_result.diff_content,
+            &preflight_result.diff_content,
         ) {
             Ok(d) => break d,
             Err(crate::ai::AiError::ModelUnavailable(ref msg)) | Err(crate::ai::AiError::RateLimitExceeded(ref msg)) => {
@@ -298,7 +298,7 @@ fn main() {
                     match crate::ai::regenerate_with_instruction(
                         &working_config.api_key,
                         &working_config.model_id,
-                        &_preflight_result.diff_content,
+                        &preflight_result.diff_content,
                         &instruction,
                     ) {
                         Ok(new_draft) => {
@@ -318,6 +318,7 @@ fn main() {
                 std::process::exit(0);
             }
             Err(_) => {
+                eprintln!("Action cancelled or prompt error.");
                 std::process::exit(0);
             }
         }
