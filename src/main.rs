@@ -96,17 +96,20 @@ fn main() {
             }
         }
         Err(preflight::PreflightError::DiffTooLarge { size }) => {
-            if ui::confirm_large_diff(size) {
-                match preflight::run_with_diff_bypass() {
-                    Ok(success) => success,
-                    Err(e) => {
-                        eprintln!("Error: {}", e);
-                        std::process::exit(1);
+            match ui::confirm_large_diff(size) {
+                Ok(true) => {
+                    match preflight::run_with_diff_bypass() {
+                        Ok(success) => success,
+                        Err(e) => {
+                            eprintln!("Error: {}", e);
+                            std::process::exit(1);
+                        }
                     }
                 }
-            } else {
-                eprintln!("\n❌ Cancelled. Stage fewer files and try again.");
-                std::process::exit(1);
+                Ok(false) | Err(()) => {
+                    eprintln!("\n❌ Cancelled. Stage fewer files and try again.");
+                    std::process::exit(1);
+                }
             }
         }
     };
@@ -135,7 +138,8 @@ fn main() {
                     let content = fallback_editor();
                     break content;
                 }
-                if ui::prompt_model_switch(&working_config.model_id) {
+                match ui::prompt_model_switch(&working_config.model_id) {
+                Ok(true) => {
                     match setup::reconfigure_model_silent(&working_config.api_key) {
                         Ok(new_model) => {
                             working_config.model_id = new_model;
@@ -154,9 +158,12 @@ fn main() {
                         }
                     }
                 }
-                eprintln!("\n💡 Continuing in manual editor mode...");
-                let content = fallback_editor();
-                break content;
+                Ok(false) | Err(()) => {
+                    eprintln!("\n💡 Continuing in manual editor mode...");
+                    let content = fallback_editor();
+                    break content;
+                }
+            }
             }
             Err(crate::ai::AiError::Network(_)) => {
                 eprintln!("\n❌ Network error. Continuing in manual editor mode...");

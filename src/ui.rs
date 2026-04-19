@@ -70,7 +70,7 @@ pub fn rate_limited_message() {
     error_message("Too many requests. Please wait a moment and try again.");
 }
 
-pub fn prompt_model_switch(model_name: &str) -> bool {
+pub fn prompt_model_switch(model_name: &str) -> Result<bool, ()> {
     println!();
     println!("❌ Oops! API Error");
     println!("The provider rejected the request for the '{}' model.", model_name);
@@ -78,10 +78,10 @@ pub fn prompt_model_switch(model_name: &str) -> bool {
     inquire::Confirm::new("Do you want to change the AI model now?")
         .with_default(true)
         .prompt()
-        .expect("User cancelled")
+        .map_err(|_| ())
 }
 
-pub fn confirm_large_diff(size: usize) -> bool {
+pub fn confirm_large_diff(size: usize) -> Result<bool, ()> {
     println!();
     println!("⚠️ Diff too large ({} characters).", size);
     println!();
@@ -92,7 +92,7 @@ pub fn confirm_large_diff(size: usize) -> bool {
     inquire::Confirm::new("Continue anyway?")
         .with_default(false)
         .prompt()
-        .expect("User cancelled")
+        .map_err(|_| ())
 }
 
 pub fn print_unstaged_files(files: &[crate::preflight::UnstagedFile]) {
