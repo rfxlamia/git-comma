@@ -57,7 +57,10 @@ fn get_unstaged_files() -> Result<Vec<UnstagedFile>, std::io::Error> {
         .filter_map(|line| {
             let mut parts = line.splitn(2, ' ');
             let status = parts.next()?;
-            let path = parts.next()?.trim();
+            let path = parts.next().map(|p| p.trim()).unwrap_or("");
+            if status.is_empty() || path.is_empty() {
+                return None; // skip malformed line
+            }
             Some(UnstagedFile {
                 status: status.to_string(),
                 path: path.to_string(),
