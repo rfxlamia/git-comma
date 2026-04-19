@@ -24,10 +24,6 @@ pub fn run_ai_engine(api_key: &str, model: &str, diff_content: &str) -> Result<S
     // Build payload
     let payload = build_payload(model, diff_content, "");
 
-    // Show loading indicator (no newline + flush before blocking call)
-    print!("⏳ Menganalisis diff dan meracik pesan commit...");
-    io::stdout().flush().ok();
-
     // Create client and call API
     let client = openrouter::Client::new(api_key.to_string());
     let raw_response = client
