@@ -4,6 +4,14 @@
 
 `comma` reads what you've staged, asks any OpenRouter model to write a commit message, and hands you the result. Accept it, edit it, or regenerate — then commit.
 
+## Demo
+
+![comma in action](docs/img/comma.png)
+*Running `comma`*
+
+![comma setup](docs/img/setup.png)
+*First-run setup flow*
+
 ## Install
 
 ```bash
