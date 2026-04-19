@@ -2,5 +2,6 @@
 target/
 docs/
 !docs/contributing/
+!docs/img/
 _experimental/
 .claude/
