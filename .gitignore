@@ -1,8 +1,7 @@
 .worktrees/
 target/
-docs/
-!docs/contributing/
-!docs/img/
-_experimental/
+docs/superpowers/
+docs/plans/
+_experimental/target/
 .claude/
 .commaignore
