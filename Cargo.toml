@@ -2,6 +2,9 @@
 name = "git-comma"
 version = "1.0.0"
 edition = "2021"
+description = "AI-powered git commit message generator using OpenRouter API"
+license = "MIT"
+repository = "https://github.com/rfxlamia/comma-cli"
 
 [[bin]]
 name = "comma"
