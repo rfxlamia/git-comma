@@ -80,20 +80,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
-name = "comma-cli"
-version = "0.1.0"
-dependencies = [
- "home",
- "inquire",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.18",
- "ureq",
- "wiremock",
-]
-
-[[package]]
 name = "cookie"
 version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -378,6 +364,20 @@ dependencies = [
  "r-efi",
  "wasip2",
  "wasip3",
+]
+
+[[package]]
+name = "git-comma"
+version = "1.0.0"
+dependencies = [
+ "home",
+ "inquire",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "ureq",
+ "wiremock",
 ]
 
 [[package]]
