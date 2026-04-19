@@ -24,7 +24,6 @@ pub struct UnstagedFile {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct PreflightSuccess {
     pub diff_content: String,
 }

@@ -1,12 +1,12 @@
-mod ai; // NEW
+mod ai;
 mod config;
-mod error; // NEW: AI error types
+mod error;
 mod openrouter;
 mod preflight;
-mod prompt; // NEW: AI prompt builder
-mod sanitization; // NEW: response sanitization
+mod prompt;
+mod sanitization;
 mod setup;
-mod tui; // NEW: AI TUI
+mod tui;
 mod ui;
 
 use clap::Parser;
@@ -163,11 +163,9 @@ fn main() {
     };
 
     // Recovery Loop: obtain valid draft with bounded retry
-    let config_path = home_config_path();
     let mut working_config = config.clone();
     let mut attempt = 0;
     let max_attempts = 3;
-
     let mut draft = loop {
         attempt += 1;
         print!("⏳ Analyzing the diff and crafting the commit message...");

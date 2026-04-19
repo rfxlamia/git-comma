@@ -5,3 +5,4 @@ docs/plans/
 _experimental/target/
 .claude/
 .commaignore
+scripts/
