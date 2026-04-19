@@ -15,7 +15,6 @@ pub enum AiError {
 }
 
 #[derive(Debug, Error)]
-#[allow(dead_code)]
 pub enum CommitError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),

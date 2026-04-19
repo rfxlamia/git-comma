@@ -55,10 +55,9 @@ fn get_unstaged_files() -> Result<Vec<UnstagedFile>, std::io::Error> {
     Ok(String::from_utf8_lossy(&output.stdout)
         .lines()
         .filter_map(|line| {
-            let status = line.chars().next()?;
-            let path = line
-                .strip_prefix(format!("{} ", status).as_str())
-                .map(|p| p.trim())?;
+            let mut parts = line.splitn(2, ' ');
+            let status = parts.next()?;
+            let path = parts.next()?.trim();
             Some(UnstagedFile {
                 status: status.to_string(),
                 path: path.to_string(),
@@ -116,12 +115,10 @@ pub fn run_with_diff_bypass() -> Result<PreflightSuccess, PreflightError> {
     if !is_git_repo() {
         return Err(PreflightError::NotGitRepo);
     }
-
     let staged = get_staged_files().map_err(|e| PreflightError::GitCommandFailed {
         command: "git diff --cached --name-only".into(),
         source: e,
     })?;
-
     if staged.is_empty() {
         let unstaged = get_unstaged_files().map_err(|e| PreflightError::GitCommandFailed {
             command: "git status -s".into(),
@@ -129,12 +126,10 @@ pub fn run_with_diff_bypass() -> Result<PreflightSuccess, PreflightError> {
         })?;
         return Err(PreflightError::NoStagedFiles { unstaged });
     }
-
     let diff_content = get_diff_content().map_err(|e| PreflightError::GitCommandFailed {
         command: "git diff --cached".into(),
         source: e,
     })?;
-
     Ok(PreflightSuccess { diff_content })
 }
 
