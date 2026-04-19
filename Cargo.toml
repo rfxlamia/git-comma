@@ -1,7 +1,11 @@
 [package]
-name = "comma-cli"
-version = "0.1.0"
+name = "git-comma"
+version = "1.0.0"
 edition = "2021"
+
+[[bin]]
+name = "comma"
+path = "src/main.rs"
 
 [dependencies]
 inquire = { version = "0.5", features = ["editor"] }

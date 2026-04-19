@@ -9,7 +9,7 @@ fn test_load_config_success() {
     let content = r#"{"api_key": "sk-or-v1-test", "model_id": "test/model"}"#;
     std::fs::write(&config_path, content).unwrap();
 
-    let result = comma_cli::config::Config::load_from_path(&config_path);
+    let result = git_comma::config::Config::load_from_path(&config_path);
     assert!(result.is_ok());
     let cfg = result.unwrap();
     assert_eq!(cfg.api_key, "sk-or-v1-test");
@@ -21,7 +21,7 @@ fn test_save_config_atomic() {
     let tmp = TempDir::new().unwrap();
     let config_path = tmp.path().join("comma.json");
 
-    let cfg = comma_cli::config::Config {
+    let cfg = git_comma::config::Config {
         api_key: "sk-or-v1-test".into(),
         model_id: "test/model".into(),
     };
