@@ -78,7 +78,7 @@ pub fn prompt_model_switch(model_name: &str) -> bool {
     inquire::Confirm::new("Do you want to change the AI model now?")
         .with_default(true)
         .prompt()
-        .unwrap_or(false)
+        .expect("User cancelled")
 }
 
 pub fn confirm_large_diff(size: usize) -> bool {
@@ -92,7 +92,7 @@ pub fn confirm_large_diff(size: usize) -> bool {
     inquire::Confirm::new("Continue anyway?")
         .with_default(false)
         .prompt()
-        .unwrap_or(false)
+        .expect("User cancelled")
 }
 
 pub fn print_unstaged_files(files: &[crate::preflight::UnstagedFile]) {

@@ -11,6 +11,23 @@ mod ui;
 
 use config::{home_config_path, Config, ConfigError};
 
+fn fallback_editor() -> String {
+    match crate::ai::open_editor("") {
+        Ok(content) => content,
+        Err(e) => {
+            eprintln!("Editor error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+fn handle_commit_failure() {
+    eprintln!("❌ Commit rejected by system (possibly pre-commit hook/linter failed).");
+    eprintln!("💡 Draft is safe! After fixing, run:");
+    eprintln!("   git commit -F .git/comma_msg.txt");
+    std::process::exit(1);
+}
+
 fn run_git_add() -> bool {
     std::process::Command::new("git")
         .args(["add", "."])
@@ -115,13 +132,8 @@ fn main() {
                 if attempt >= max_attempts {
                     eprintln!("\n❌ {} after {} attempts.", msg, max_attempts);
                     eprintln!("💡 Continuing in manual editor mode...");
-                    match crate::ai::open_editor("") {
-                        Ok(content) => break content,
-                        Err(e) => {
-                            eprintln!("Editor error: {}", e);
-                            std::process::exit(1);
-                        }
-                    }
+                    let content = fallback_editor();
+                    break content;
                 }
                 if ui::prompt_model_switch(&working_config.model_id) {
                     match setup::reconfigure_model_silent(&working_config.api_key) {
@@ -143,43 +155,23 @@ fn main() {
                     }
                 }
                 eprintln!("\n💡 Continuing in manual editor mode...");
-                match crate::ai::open_editor("") {
-                    Ok(content) => break content,
-                    Err(e) => {
-                        eprintln!("Editor error: {}", e);
-                        std::process::exit(1);
-                    }
-                }
+                let content = fallback_editor();
+                break content;
             }
             Err(crate::ai::AiError::Network(_)) => {
                 eprintln!("\n❌ Network error. Continuing in manual editor mode...");
-                match crate::ai::open_editor("") {
-                    Ok(content) => break content,
-                    Err(e) => {
-                        eprintln!("Editor error: {}", e);
-                        std::process::exit(1);
-                    }
-                }
+                let content = fallback_editor();
+                break content;
             }
             Err(crate::ai::AiError::EmptyResponse) => {
                 eprintln!("\n❌ Empty response from API. Continuing in manual editor mode...");
-                match crate::ai::open_editor("") {
-                    Ok(content) => break content,
-                    Err(e) => {
-                        eprintln!("Editor error: {}", e);
-                        std::process::exit(1);
-                    }
-                }
+                let content = fallback_editor();
+                break content;
             }
             Err(crate::ai::AiError::Api(_)) => {
                 eprintln!("\n❌ Failed to contact OpenRouter. Continuing in manual editor mode...");
-                match crate::ai::open_editor("") {
-                    Ok(content) => break content,
-                    Err(e) => {
-                        eprintln!("Editor error: {}", e);
-                        std::process::exit(1);
-                    }
-                }
+                let content = fallback_editor();
+                break content;
             }
         }
     };
@@ -210,10 +202,7 @@ fn main() {
                             break;
                         }
                         Err(_e) => {
-                            eprintln!("❌ Commit rejected by system (possibly pre-commit hook/linter failed).");
-                            eprintln!("💡 Draft is safe! After fixing, run:");
-                            eprintln!("   git commit -F .git/comma_msg.txt");
-                            std::process::exit(1);
+                            handle_commit_failure();
                         }
                     }
                 } else {
@@ -235,10 +224,7 @@ fn main() {
                                     break;
                                 }
                                 Err(_e) => {
-                                    eprintln!("❌ Commit rejected by system (possibly pre-commit hook/linter failed).");
-                                    eprintln!("💡 Draft is safe! After fixing, run:");
-                                    eprintln!("   git commit -F .git/comma_msg.txt");
-                                    std::process::exit(1);
+                                    handle_commit_failure();
                                 }
                             }
                         } else {

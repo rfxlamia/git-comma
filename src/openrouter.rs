@@ -11,6 +11,21 @@ pub struct ModelsResponse {
     pub data: Vec<Model>,
 }
 
+#[derive(Debug, Deserialize)]
+struct MessageContent {
+    content: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Choice {
+    message: MessageContent,
+}
+
+#[derive(Debug, Deserialize)]
+struct ChatResponse {
+    choices: Vec<Choice>,
+}
+
 #[derive(Debug)]
 pub enum ApiError {
     Unauthorized,
@@ -94,21 +109,6 @@ impl Client {
             403 => return Err(ApiError::Forbidden),
             429 => return Err(ApiError::RateLimited),
             code => return Err(ApiError::HttpError(code)),
-        }
-
-        #[derive(Deserialize)]
-        struct MessageContent {
-            content: Option<String>,
-        }
-
-        #[derive(Deserialize)]
-        struct Choice {
-            message: MessageContent,
-        }
-
-        #[derive(Deserialize)]
-        struct ChatResponse {
-            choices: Vec<Choice>,
         }
 
         let chat_resp: ChatResponse = resp

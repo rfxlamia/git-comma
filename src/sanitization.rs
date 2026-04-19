@@ -2,10 +2,12 @@
 pub fn sanitize_response(raw: &str) -> String {
     let trimmed = raw.trim();
 
-    // Remove common markdown wrappers
+    // Remove common markdown wrappers (try language-specific first, then generic)
     let without_backticks = trimmed
-        .strip_prefix("```\n")
+        .strip_prefix("```commit\n")
         .and_then(|s| s.strip_suffix("```"))
+        .or_else(|| trimmed.strip_prefix("```text\n").and_then(|s| s.strip_suffix("```")))
+        .or_else(|| trimmed.strip_prefix("```\n").and_then(|s| s.strip_suffix("```")))
         .or_else(|| trimmed.strip_prefix("```"))
         .unwrap_or(trimmed);
 
@@ -45,5 +47,17 @@ mod tests {
     fn test_sanitize_preserves_multiline() {
         let input = "feat(ux): implement interactive checks\n\n- Add fallback for unstaged files\n- Keep terminal clean";
         assert_eq!(sanitize_response(input), input);
+    }
+
+    #[test]
+    fn test_sanitize_removes_commit_lang_backticks() {
+        let input = "```commit\nfeat: add feature\n```";
+        assert_eq!(sanitize_response(input), "feat: add feature");
+    }
+
+    #[test]
+    fn test_sanitize_removes_text_lang_backticks() {
+        let input = "```text\nfeat: add feature\n```";
+        assert_eq!(sanitize_response(input), "feat: add feature");
     }
 }
