@@ -1,3 +1,5 @@
+pub use crate::filter::{filter_staged_files, FilterMode};
+
 const SOFT_DIFF_LIMIT: usize = 15_000;
 
 #[derive(Debug, thiserror::Error)]
@@ -26,6 +28,7 @@ pub struct UnstagedFile {
 #[derive(Debug)]
 pub struct PreflightSuccess {
     pub diff_content: String,
+    pub is_static_message: bool,
 }
 
 fn is_git_repo() -> bool {
@@ -100,6 +103,11 @@ fn is_working_tree_clean() -> Result<bool, std::io::Error> {
 /// Returns `Ok(PreflightSuccess)` with diff content if all checks pass.
 /// Returns `Err(PreflightError)` for any failure — does NOT print or exit.
 pub fn run() -> Result<PreflightSuccess, PreflightError> {
+    run_with_filter(FilterMode::Smart)
+}
+
+/// Same as run() but allows explicit FilterMode (for --no-filter support).
+pub fn run_with_filter(mode: FilterMode) -> Result<PreflightSuccess, PreflightError> {
     if !is_git_repo() {
         return Err(PreflightError::NotGitRepo);
     }
@@ -124,50 +132,63 @@ pub fn run() -> Result<PreflightSuccess, PreflightError> {
         return Err(PreflightError::NoStagedFiles { unstaged });
     }
 
-    let diff_content = get_diff_content().map_err(|e| PreflightError::GitCommandFailed {
-        command: "git diff --cached".into(),
-        source: e,
+    // Run the filter
+    let filter_result = filter_staged_files(mode).map_err(|e| {
+        PreflightError::GitCommandFailed {
+            command: "git diff --cached --numstat".into(),
+            source: std::io::Error::new(std::io::ErrorKind::Other, e.to_string()),
+        }
     })?;
 
+    let diff_content = if filter_result.excluded.is_empty() {
+        get_diff_content().map_err(|e| PreflightError::GitCommandFailed {
+            command: "git diff --cached".into(),
+            source: e,
+        })?
+    } else {
+        let exclude_args = crate::filter::build_git_exclude_args(&filter_result.excluded);
+        get_filtered_diff_content(&exclude_args).map_err(|e| PreflightError::GitCommandFailed {
+            command: "git diff --cached :(exclude)".into(),
+            source: e,
+        })?
+    };
+
+    // Check if all staged files were excluded (static message path)
+    if filter_result.all_excluded && diff_content.trim().is_empty() {
+        return Ok(PreflightSuccess {
+            diff_content: "chore: update dependencies".to_string(),
+            is_static_message: true,
+        });
+    }
+
+    // Check diff size limit
     if diff_content.len() > SOFT_DIFF_LIMIT {
         return Err(PreflightError::DiffTooLarge {
             size: diff_content.len(),
         });
     }
 
-    Ok(PreflightSuccess { diff_content })
+    Ok(PreflightSuccess {
+        diff_content,
+        is_static_message: false,
+    })
+}
+
+/// Builds git diff command with exclude pathspec arguments.
+fn get_filtered_diff_content(exclude_args: &[String]) -> Result<String, std::io::Error> {
+    let mut cmd = std::process::Command::new("git");
+    cmd.arg("diff").arg("--cached");
+    for arg in exclude_args {
+        cmd.arg(arg);
+    }
+    let output = cmd.output()?;
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
 /// Same as run() but skips the diff size check.
 /// Used when user confirmed they want to proceed despite large diff.
 pub fn run_with_diff_bypass() -> Result<PreflightSuccess, PreflightError> {
-    if !is_git_repo() {
-        return Err(PreflightError::NotGitRepo);
-    }
-
-    if is_working_tree_clean().map_err(|e| PreflightError::GitCommandFailed {
-        command: "git status --porcelain".into(),
-        source: e,
-    })? {
-        return Err(PreflightError::WorkingTreeClean);
-    }
-
-    let staged = get_staged_files().map_err(|e| PreflightError::GitCommandFailed {
-        command: "git diff --cached --name-only".into(),
-        source: e,
-    })?;
-    if staged.is_empty() {
-        let unstaged = get_unstaged_files().map_err(|e| PreflightError::GitCommandFailed {
-            command: "git status -s".into(),
-            source: e,
-        })?;
-        return Err(PreflightError::NoStagedFiles { unstaged });
-    }
-    let diff_content = get_diff_content().map_err(|e| PreflightError::GitCommandFailed {
-        command: "git diff --cached".into(),
-        source: e,
-    })?;
-    Ok(PreflightSuccess { diff_content })
+    run_with_filter(FilterMode::NoFilter)
 }
 
 #[cfg(test)]
