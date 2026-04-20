@@ -368,27 +368,33 @@ fn main() {
                     }
                 }
             }
-            Ok(crate::ai::Action::Regenerate) => match crate::ai::prompt_custom_instruction() {
-                Ok(instruction) => {
-                    match crate::ai::regenerate_with_instruction(
-                        &working_config.api_key,
-                        &working_config.model_id,
-                        &preflight_result.diff_content,
-                        &instruction,
-                    ) {
-                        Ok(new_draft) => {
-                            println!("\n==================================================");
-                            println!("{}", new_draft);
-                            println!("==================================================\n");
-                            draft = new_draft;
-                        }
-                        Err(e) => {
-                            eprintln!("\n❌ Regenerate failed: {}", e);
+            Ok(crate::ai::Action::Regenerate) => {
+                if preflight_result.is_static_message {
+                    eprintln!("Regenerate is not available: no diff content (all files were filtered).");
+                    continue;
+                }
+                match crate::ai::prompt_custom_instruction() {
+                    Ok(instruction) => {
+                        match crate::ai::regenerate_with_instruction(
+                            &working_config.api_key,
+                            &working_config.model_id,
+                            &preflight_result.diff_content,
+                            &instruction,
+                        ) {
+                            Ok(new_draft) => {
+                                println!("\n==================================================");
+                                println!("{}", new_draft);
+                                println!("==================================================\n");
+                                draft = new_draft;
+                            }
+                            Err(e) => {
+                                eprintln!("\n❌ Regenerate failed: {}", e);
+                            }
                         }
                     }
+                    Err(_) => continue,
                 }
-                Err(_) => continue,
-            },
+            }
             Ok(crate::ai::Action::Cancel) => {
                 std::process::exit(0);
             }

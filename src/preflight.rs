@@ -188,7 +188,18 @@ fn get_filtered_diff_content(exclude_args: &[String]) -> Result<String, std::io:
 /// Same as run() but skips the diff size check.
 /// Used when user confirmed they want to proceed despite large diff.
 pub fn run_with_diff_bypass() -> Result<PreflightSuccess, PreflightError> {
-    run_with_filter(FilterMode::NoFilter)
+    // Reuse all checks from run_with_filter(NoFilter) but ignore DiffTooLarge
+    match run_with_filter(FilterMode::NoFilter) {
+        Ok(s) => Ok(s),
+        Err(PreflightError::DiffTooLarge { .. }) => {
+            let diff_content = get_diff_content().map_err(|e| PreflightError::GitCommandFailed {
+                command: "git diff --cached".into(),
+                source: e,
+            })?;
+            Ok(PreflightSuccess { diff_content, is_static_message: false })
+        }
+        Err(e) => Err(e),
+    }
 }
 
 #[cfg(test)]
