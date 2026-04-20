@@ -192,7 +192,7 @@ mod tests {
         assert!(is_minified_file("styles.min.css"));
         assert!(!is_minified_file("main.js"));
         assert!(!is_minified_file("app.min.jsx")); // .jsx, not .js
-        assert!(!is_minified_file("normalize.min.css"));
+        assert!(is_minified_file("normalize.min.css"));
     }
 
     #[test]
