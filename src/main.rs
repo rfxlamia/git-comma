@@ -1,6 +1,7 @@
 mod ai;
 mod config;
 mod error;
+mod filter;
 mod openrouter;
 mod preflight;
 mod prompt;
@@ -19,6 +20,9 @@ struct Cli {
     /// Run the interactive setup flow
     #[arg(long)]
     setup: bool,
+    /// Disable smart diff filtering (include all files in AI diff)
+    #[arg(long)]
+    no_filter: bool,
 }
 
 fn fallback_editor() -> String {
@@ -97,66 +101,131 @@ fn main() {
     };
 
     // Pre-flight check
-    let preflight_result = match preflight::run() {
-        Ok(success) => success,
-        Err(preflight::PreflightError::WorkingTreeClean) => {
-            println!("✨ Working tree clean.");
-            std::process::exit(0);
-        }
-        Err(preflight::PreflightError::NotGitRepo) => {
-            eprintln!("Error: This is not a git repository.");
-            std::process::exit(1);
-        }
-        Err(preflight::PreflightError::GitCommandFailed { command, source }) => {
-            eprintln!("Error: Git command '{}' failed: {}", command, source);
-            std::process::exit(1);
-        }
-        Err(preflight::PreflightError::NoStagedFiles { unstaged }) => {
-            ui::print_unstaged_files(&unstaged);
-            if ui::prompt_git_add() {
-                if run_git_add() {
-                    // Re-run preflight check
-                    match preflight::run() {
-                        Ok(success) => success,
-                        Err(preflight::PreflightError::NoStagedFiles { .. }) => {
-                            eprintln!("Still no files staged after git add.");
-                            std::process::exit(1);
-                        }
-                        Err(preflight::PreflightError::WorkingTreeClean) => {
-                            println!("✨ Working tree clean.");
-                            std::process::exit(0);
-                        }
-                        Err(preflight::PreflightError::NotGitRepo) => {
-                            eprintln!("Error: This is not a git repository.");
-                            std::process::exit(1);
-                        }
-                        Err(e) => {
-                            eprintln!("Error: {}", e);
-                            std::process::exit(1);
-                        }
-                    }
-                } else {
-                    eprintln!("git add . failed.");
-                    std::process::exit(1);
-                }
-            } else {
+    let preflight_result = if cli.no_filter {
+        match preflight::run_with_filter(preflight::FilterMode::NoFilter) {
+            Ok(success) => success,
+            Err(preflight::PreflightError::WorkingTreeClean) => {
+                println!("✨ Working tree clean.");
+                std::process::exit(0);
+            }
+            Err(preflight::PreflightError::NotGitRepo) => {
+                eprintln!("Error: This is not a git repository.");
                 std::process::exit(1);
             }
-        }
-        Err(preflight::PreflightError::DiffTooLarge { size }) => {
-            match ui::confirm_large_diff(size) {
-                Ok(true) => {
-                    match preflight::run_with_diff_bypass() {
-                        Ok(success) => success,
-                        Err(e) => {
-                            eprintln!("Error: {}", e);
-                            std::process::exit(1);
+            Err(preflight::PreflightError::GitCommandFailed { command, source }) => {
+                eprintln!("Error: Git command '{}' failed: {}", command, source);
+                std::process::exit(1);
+            }
+            Err(preflight::PreflightError::NoStagedFiles { unstaged }) => {
+                ui::print_unstaged_files(&unstaged);
+                if ui::prompt_git_add() {
+                    if run_git_add() {
+                        match preflight::run_with_filter(preflight::FilterMode::NoFilter) {
+                            Ok(success) => success,
+                            Err(preflight::PreflightError::NoStagedFiles { .. }) => {
+                                eprintln!("Still no files staged after git add.");
+                                std::process::exit(1);
+                            }
+                            Err(preflight::PreflightError::WorkingTreeClean) => {
+                                println!("✨ Working tree clean.");
+                                std::process::exit(0);
+                            }
+                            Err(preflight::PreflightError::NotGitRepo) => {
+                                eprintln!("Error: This is not a git repository.");
+                                std::process::exit(1);
+                            }
+                            Err(e) => {
+                                eprintln!("Error: {}", e);
+                                std::process::exit(1);
+                            }
+                        }
+                    } else {
+                        eprintln!("git add . failed.");
+                        std::process::exit(1);
+                    }
+                } else {
+                    std::process::exit(1);
+                }
+            }
+            Err(preflight::PreflightError::DiffTooLarge { size }) => {
+                match ui::confirm_large_diff(size) {
+                    Ok(true) => {
+                        match preflight::run_with_filter(preflight::FilterMode::NoFilter) {
+                            Ok(success) => success,
+                            Err(e) => {
+                                eprintln!("Error: {}", e);
+                                std::process::exit(1);
+                            }
                         }
                     }
+                    Ok(false) | Err(()) => {
+                        eprintln!("\n❌ Cancelled. Stage fewer files and try again.");
+                        std::process::exit(1);
+                    }
                 }
-                Ok(false) | Err(()) => {
-                    eprintln!("\n❌ Cancelled. Stage fewer files and try again.");
+            }
+        }
+    } else {
+        match preflight::run() {
+            Ok(success) => success,
+            Err(preflight::PreflightError::WorkingTreeClean) => {
+                println!("✨ Working tree clean.");
+                std::process::exit(0);
+            }
+            Err(preflight::PreflightError::NotGitRepo) => {
+                eprintln!("Error: This is not a git repository.");
+                std::process::exit(1);
+            }
+            Err(preflight::PreflightError::GitCommandFailed { command, source }) => {
+                eprintln!("Error: Git command '{}' failed: {}", command, source);
+                std::process::exit(1);
+            }
+            Err(preflight::PreflightError::NoStagedFiles { unstaged }) => {
+                ui::print_unstaged_files(&unstaged);
+                if ui::prompt_git_add() {
+                    if run_git_add() {
+                        match preflight::run() {
+                            Ok(success) => success,
+                            Err(preflight::PreflightError::NoStagedFiles { .. }) => {
+                                eprintln!("Still no files staged after git add.");
+                                std::process::exit(1);
+                            }
+                            Err(preflight::PreflightError::WorkingTreeClean) => {
+                                println!("✨ Working tree clean.");
+                                std::process::exit(0);
+                            }
+                            Err(preflight::PreflightError::NotGitRepo) => {
+                                eprintln!("Error: This is not a git repository.");
+                                std::process::exit(1);
+                            }
+                            Err(e) => {
+                                eprintln!("Error: {}", e);
+                                std::process::exit(1);
+                            }
+                        }
+                    } else {
+                        eprintln!("git add . failed.");
+                        std::process::exit(1);
+                    }
+                } else {
                     std::process::exit(1);
+                }
+            }
+            Err(preflight::PreflightError::DiffTooLarge { size }) => {
+                match ui::confirm_large_diff(size) {
+                    Ok(true) => {
+                        match preflight::run_with_diff_bypass() {
+                            Ok(success) => success,
+                            Err(e) => {
+                                eprintln!("Error: {}", e);
+                                std::process::exit(1);
+                            }
+                        }
+                    }
+                    Ok(false) | Err(()) => {
+                        eprintln!("\n❌ Cancelled. Stage fewer files and try again.");
+                        std::process::exit(1);
+                    }
                 }
             }
         }
@@ -168,6 +237,12 @@ fn main() {
     let max_attempts = 3;
     let mut draft = loop {
         attempt += 1;
+
+        // STATIC MESSAGE PATH — skip AI, go directly to TUI
+        if preflight_result.is_static_message {
+            break preflight_result.diff_content.clone();
+        }
+
         print!("⏳ Analyzing the diff and crafting the commit message...");
         std::io::Write::flush(&mut std::io::stdout()).ok();
 
