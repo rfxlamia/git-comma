@@ -44,6 +44,17 @@ fn prompt_api_key(is_first_run: bool, existing_key: Option<&str>) -> String {
     }
 }
 
+pub fn validate_max_chars_input(input: &str) -> Result<usize, String> {
+    if input.is_empty() {
+        return Ok(15_000);
+    }
+    match input.parse::<usize>() {
+        Ok(0) => Err("Must be at least 1".to_string()),
+        Ok(n) => Ok(n),
+        Err(_) => Err(format!("'{}' is not a valid number", input)),
+    }
+}
+
 pub fn run_setup_flow(is_first_run: bool) -> Result<Config, ConfigError> {
     print_splash_banner();
 
@@ -102,10 +113,38 @@ pub fn run_setup_flow(is_first_run: bool) -> Result<Config, ConfigError> {
         selection
     };
 
+    let current_max_chars = if !is_first_run {
+        home_config_path()
+            .ok()
+            .and_then(|path| Config::load_from_path(&path).ok())
+            .map(|c| c.max_chars)
+            .unwrap_or(15_000)
+    } else {
+        15_000
+    };
+
+    let max_chars = loop {
+        let input = inquire::Text::new(&format!(
+            "Max characters for diff (current: {}):",
+            current_max_chars
+        ))
+        .with_default("")
+        .prompt()
+        .expect("User cancelled");
+
+        match validate_max_chars_input(&input) {
+            Ok(n) => break n,
+            Err(msg) => {
+                ui::error_message(&msg);
+                continue;
+            }
+        }
+    };
+
     let config = Config {
         api_key,
         model_id,
-        max_chars: 15_000,
+        max_chars,
     };
 
     let path = home_config_path()?;

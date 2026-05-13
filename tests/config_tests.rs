@@ -112,3 +112,55 @@ fn test_config_max_chars_appears_in_saved_json() {
     assert!(json.contains("\"max_chars\""), "saved JSON should contain max_chars field");
     assert!(json.contains("15000"), "saved JSON should contain max_chars value");
 }
+
+#[test]
+fn test_validate_max_chars_rejects_zero() {
+    let result = git_comma::setup::validate_max_chars_input("0");
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), "Must be at least 1");
+}
+
+#[test]
+fn test_validate_max_chars_accepts_one() {
+    let result = git_comma::setup::validate_max_chars_input("1");
+    assert_eq!(result.unwrap(), 1);
+}
+
+#[test]
+fn test_validate_max_chars_accepts_empty_as_default() {
+    let result = git_comma::setup::validate_max_chars_input("");
+    assert_eq!(result.unwrap(), 15_000); // keeps default
+}
+
+#[test]
+fn test_validate_max_chars_rejects_non_numeric() {
+    let result = git_comma::setup::validate_max_chars_input("abc");
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_check_diff_size_within_limit() {
+    let diff = "a".repeat(25_000);
+    let result = git_comma::preflight::check_diff_size(&diff, 30_000);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_check_diff_size_exceeds_limit() {
+    let diff = "a".repeat(15_000);
+    let result = git_comma::preflight::check_diff_size(&diff, 10_000);
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        git_comma::preflight::PreflightError::DiffTooLarge { size } => {
+            assert_eq!(size, 15_000);
+        }
+        other => panic!("Expected DiffTooLarge, got: {:?}", other),
+    }
+}
+
+#[test]
+fn test_check_diff_size_exact_limit() {
+    let diff = "a".repeat(10_000);
+    let result = git_comma::preflight::check_diff_size(&diff, 10_000);
+    assert!(result.is_ok()); // exactly at limit passes
+}
