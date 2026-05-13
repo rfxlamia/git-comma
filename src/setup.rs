@@ -105,6 +105,7 @@ pub fn run_setup_flow(is_first_run: bool) -> Result<Config, ConfigError> {
     let config = Config {
         api_key,
         model_id,
+        max_chars: 15_000,
     };
 
     let path = home_config_path()?;

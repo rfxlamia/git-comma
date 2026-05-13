@@ -1,10 +1,16 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+fn default_max_chars() -> usize {
+    15_000
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub api_key: String,
     pub model_id: String,
+    #[serde(default = "default_max_chars")]
+    pub max_chars: usize,
 }
 
 impl Config {

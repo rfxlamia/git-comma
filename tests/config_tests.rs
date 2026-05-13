@@ -8,6 +8,7 @@ fn test_config_load_preserves_api_key_field() {
     let cfg = git_comma::config::Config {
         api_key: "sk-or-v1-test".to_string(),
         model_id: "anthropic/claude-3-haiku".to_string(),
+        max_chars: 15_000,
     };
     cfg.save(&path).unwrap();
 
@@ -57,6 +58,7 @@ fn test_save_config_atomic() {
     let cfg = git_comma::config::Config {
         api_key: "sk-or-v1-test".into(),
         model_id: "test/model".into(),
+        max_chars: 15_000,
     };
 
     cfg.save(&config_path).unwrap();
@@ -70,4 +72,43 @@ fn test_save_config_atomic() {
         let perm = meta.permissions().mode();
         assert_eq!(perm & 0o777, 0o600);
     }
+}
+
+#[test]
+fn test_config_max_chars_defaults_to_15000() {
+    let tmp = TempDir::new().unwrap();
+    let path = tmp.path().join("comma.json");
+    // Write JSON without max_chars field (simulates existing config)
+    std::fs::write(&path, r#"{"api_key":"sk-or-v1-test","model_id":"test/model"}"#).unwrap();
+    let loaded = git_comma::config::Config::load_from_path(&path).unwrap();
+    assert_eq!(loaded.max_chars, 15_000);
+}
+
+#[test]
+fn test_config_max_chars_round_trip() {
+    let tmp = TempDir::new().unwrap();
+    let path = tmp.path().join("comma.json");
+    let cfg = git_comma::config::Config {
+        api_key: "sk-or-v1-test".to_string(),
+        model_id: "test/model".to_string(),
+        max_chars: 20_000,
+    };
+    cfg.save(&path).unwrap();
+    let loaded = git_comma::config::Config::load_from_path(&path).unwrap();
+    assert_eq!(loaded.max_chars, 20_000);
+}
+
+#[test]
+fn test_config_max_chars_appears_in_saved_json() {
+    let tmp = TempDir::new().unwrap();
+    let path = tmp.path().join("comma.json");
+    let cfg = git_comma::config::Config {
+        api_key: "sk-or-v1-test".to_string(),
+        model_id: "test/model".to_string(),
+        max_chars: 15_000,
+    };
+    cfg.save(&path).unwrap();
+    let json = std::fs::read_to_string(&path).unwrap();
+    assert!(json.contains("\"max_chars\""), "saved JSON should contain max_chars field");
+    assert!(json.contains("15000"), "saved JSON should contain max_chars value");
 }
