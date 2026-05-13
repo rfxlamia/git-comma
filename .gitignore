@@ -6,3 +6,4 @@ _experimental/target/
 .claude/
 .commaignore
 scripts/
+.pi/
