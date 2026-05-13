@@ -1,7 +1,5 @@
 pub use crate::filter::{filter_staged_files, FilterMode};
 
-const SOFT_DIFF_LIMIT: usize = 15_000;
-
 #[derive(Debug, thiserror::Error)]
 pub enum PreflightError {
     #[error("Not a git repository")]
@@ -98,16 +96,27 @@ fn is_working_tree_clean() -> Result<bool, std::io::Error> {
     Ok(clean)
 }
 
+/// Checks whether the diff content exceeds the given limit.
+///
+/// Returns Ok(()) if within limit, Err(DiffTooLarge) if exceeded.
+pub fn check_diff_size(diff: &str, limit: usize) -> Result<(), PreflightError> {
+    if diff.len() > limit {
+        Err(PreflightError::DiffTooLarge { size: diff.len() })
+    } else {
+        Ok(())
+    }
+}
+
 /// Runs pre-flight checks: git repo validity, staged files, diff size.
 ///
 /// Returns `Ok(PreflightSuccess)` with diff content if all checks pass.
 /// Returns `Err(PreflightError)` for any failure — does NOT print or exit.
-pub fn run() -> Result<PreflightSuccess, PreflightError> {
-    run_with_filter(FilterMode::Smart)
+pub fn run(limit: usize) -> Result<PreflightSuccess, PreflightError> {
+    run_with_filter(FilterMode::Smart, limit)
 }
 
 /// Same as run() but allows explicit FilterMode (for --no-filter support).
-pub fn run_with_filter(mode: FilterMode) -> Result<PreflightSuccess, PreflightError> {
+pub fn run_with_filter(mode: FilterMode, limit: usize) -> Result<PreflightSuccess, PreflightError> {
     if !is_git_repo() {
         return Err(PreflightError::NotGitRepo);
     }
@@ -162,11 +171,7 @@ pub fn run_with_filter(mode: FilterMode) -> Result<PreflightSuccess, PreflightEr
     }
 
     // Check diff size limit
-    if diff_content.len() > SOFT_DIFF_LIMIT {
-        return Err(PreflightError::DiffTooLarge {
-            size: diff_content.len(),
-        });
-    }
+    check_diff_size(&diff_content, limit)?;
 
     Ok(PreflightSuccess {
         diff_content,
@@ -187,9 +192,9 @@ fn get_filtered_diff_content(exclude_args: &[String]) -> Result<String, std::io:
 
 /// Same as run() but skips the diff size check.
 /// Used when user confirmed they want to proceed despite large diff.
-pub fn run_with_diff_bypass() -> Result<PreflightSuccess, PreflightError> {
+pub fn run_with_diff_bypass(limit: usize) -> Result<PreflightSuccess, PreflightError> {
     // Reuse all checks from run_with_filter(NoFilter) but ignore DiffTooLarge
-    match run_with_filter(FilterMode::NoFilter) {
+    match run_with_filter(FilterMode::NoFilter, limit) {
         Ok(s) => Ok(s),
         Err(PreflightError::DiffTooLarge { .. }) => {
             let diff_content = get_diff_content().map_err(|e| PreflightError::GitCommandFailed {

@@ -102,7 +102,7 @@ fn main() {
 
     // Pre-flight check
     let preflight_result = if cli.no_filter {
-        match preflight::run_with_filter(preflight::FilterMode::NoFilter) {
+        match preflight::run_with_filter(preflight::FilterMode::NoFilter, config.max_chars) {
             Ok(success) => success,
             Err(preflight::PreflightError::WorkingTreeClean) => {
                 println!("✨ Working tree clean.");
@@ -120,7 +120,7 @@ fn main() {
                 ui::print_unstaged_files(&unstaged);
                 if ui::prompt_git_add() {
                     if run_git_add() {
-                        match preflight::run_with_filter(preflight::FilterMode::NoFilter) {
+                        match preflight::run_with_filter(preflight::FilterMode::NoFilter, config.max_chars) {
                             Ok(success) => success,
                             Err(preflight::PreflightError::NoStagedFiles { .. }) => {
                                 eprintln!("Still no files staged after git add.");
@@ -150,7 +150,7 @@ fn main() {
             Err(preflight::PreflightError::DiffTooLarge { size }) => {
                 match ui::confirm_large_diff(size) {
                     Ok(true) => {
-                        match preflight::run_with_filter(preflight::FilterMode::NoFilter) {
+                        match preflight::run_with_filter(preflight::FilterMode::NoFilter, config.max_chars) {
                             Ok(success) => success,
                             Err(e) => {
                                 eprintln!("Error: {}", e);
@@ -166,7 +166,7 @@ fn main() {
             }
         }
     } else {
-        match preflight::run() {
+        match preflight::run(config.max_chars) {
             Ok(success) => success,
             Err(preflight::PreflightError::WorkingTreeClean) => {
                 println!("✨ Working tree clean.");
@@ -184,7 +184,7 @@ fn main() {
                 ui::print_unstaged_files(&unstaged);
                 if ui::prompt_git_add() {
                     if run_git_add() {
-                        match preflight::run() {
+                        match preflight::run(config.max_chars) {
                             Ok(success) => success,
                             Err(preflight::PreflightError::NoStagedFiles { .. }) => {
                                 eprintln!("Still no files staged after git add.");
@@ -214,7 +214,7 @@ fn main() {
             Err(preflight::PreflightError::DiffTooLarge { size }) => {
                 match ui::confirm_large_diff(size) {
                     Ok(true) => {
-                        match preflight::run_with_diff_bypass() {
+                        match preflight::run_with_diff_bypass(config.max_chars) {
                             Ok(success) => success,
                             Err(e) => {
                                 eprintln!("Error: {}", e);
