@@ -241,4 +241,115 @@ mod tests {
         let args = build_git_exclude_args(&excluded);
         assert_eq!(args, vec![":(exclude)Cargo.lock", ":(exclude)package-lock.json"]);
     }
+
+    #[test]
+    fn test_all_machine_generated_true_all_lockfiles() {
+        let result = FilterResult {
+            excluded: vec![
+                ExcludedFile {
+                    path: "Cargo.lock".into(),
+                    reason: ExclusionReason::MachineGeneratedLockfile,
+                },
+                ExcludedFile {
+                    path: "package-lock.json".into(),
+                    reason: ExclusionReason::MachineGeneratedLockfile,
+                },
+            ],
+            all_excluded: true,
+        };
+        assert!(result.all_machine_generated());
+    }
+
+    #[test]
+    fn test_all_machine_generated_true_binary_files() {
+        let result = FilterResult {
+            excluded: vec![
+                ExcludedFile {
+                    path: "image.png".into(),
+                    reason: ExclusionReason::BinaryFile,
+                },
+            ],
+            all_excluded: true,
+        };
+        assert!(result.all_machine_generated());
+    }
+
+    #[test]
+    fn test_all_machine_generated_true_mixed_machine() {
+        let result = FilterResult {
+            excluded: vec![
+                ExcludedFile {
+                    path: "Cargo.lock".into(),
+                    reason: ExclusionReason::MachineGeneratedLockfile,
+                },
+                ExcludedFile {
+                    path: "image.png".into(),
+                    reason: ExclusionReason::BinaryFile,
+                },
+                ExcludedFile {
+                    path: "bundle.min.js".into(),
+                    reason: ExclusionReason::MinifiedFile,
+                },
+            ],
+            all_excluded: true,
+        };
+        assert!(result.all_machine_generated());
+    }
+
+    #[test]
+    fn test_all_machine_generated_false_with_heuristic() {
+        let result = FilterResult {
+            excluded: vec![
+                ExcludedFile {
+                    path: "src/main.rs".into(),
+                    reason: ExclusionReason::HeuristicSize { added: 600, deleted: 0 },
+                },
+            ],
+            all_excluded: true,
+        };
+        assert!(!result.all_machine_generated());
+    }
+
+    #[test]
+    fn test_all_machine_generated_false_mixed_heuristic() {
+        let result = FilterResult {
+            excluded: vec![
+                ExcludedFile {
+                    path: "Cargo.lock".into(),
+                    reason: ExclusionReason::MachineGeneratedLockfile,
+                },
+                ExcludedFile {
+                    path: "src/main.rs".into(),
+                    reason: ExclusionReason::HeuristicSize { added: 600, deleted: 0 },
+                },
+            ],
+            all_excluded: true,
+        };
+        assert!(!result.all_machine_generated());
+    }
+
+    #[test]
+    fn test_all_machine_generated_false_not_all_excluded() {
+        // Even if all excluded items are machine-generated, if not ALL staged files are excluded
+        // (i.e., some files are included in the diff), return false
+        let result = FilterResult {
+            excluded: vec![
+                ExcludedFile {
+                    path: "Cargo.lock".into(),
+                    reason: ExclusionReason::MachineGeneratedLockfile,
+                },
+            ],
+            all_excluded: false, // Some files were NOT excluded
+        };
+        assert!(!result.all_machine_generated());
+    }
+
+    #[test]
+    fn test_all_machine_generated_false_empty_excluded() {
+        let result = FilterResult {
+            excluded: vec![],
+            all_excluded: false,
+        };
+        assert!(!result.all_machine_generated());
+    }
 }

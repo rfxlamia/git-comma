@@ -149,7 +149,22 @@ pub fn run_with_filter(mode: FilterMode, limit: usize) -> Result<PreflightSucces
         }
     })?;
 
-    let diff_content = if filter_result.excluded.is_empty() {
+    // Check if all staged files were excluded (static message path)
+    if filter_result.all_machine_generated() {
+        return Ok(PreflightSuccess {
+            diff_content: "chore: update dependencies".to_string(),
+            is_static_message: true,
+        });
+    }
+
+    // All files excluded due to HeuristicSize (not machine-generated): fall back to full diff.
+    // This avoids a double git diff --cached call by getting full diff directly.
+    let diff_content = if filter_result.all_excluded {
+        get_diff_content().map_err(|e| PreflightError::GitCommandFailed {
+            command: "git diff --cached".into(),
+            source: e,
+        })?
+    } else if filter_result.excluded.is_empty() {
         get_diff_content().map_err(|e| PreflightError::GitCommandFailed {
             command: "git diff --cached".into(),
             source: e,
@@ -160,24 +175,6 @@ pub fn run_with_filter(mode: FilterMode, limit: usize) -> Result<PreflightSucces
             command: "git diff --cached :(exclude)".into(),
             source: e,
         })?
-    };
-
-    // Check if all staged files were excluded (static message path)
-    if filter_result.all_machine_generated() && diff_content.trim().is_empty() {
-        return Ok(PreflightSuccess {
-            diff_content: "chore: update dependencies".to_string(),
-            is_static_message: true,
-        });
-    }
-
-    // All files excluded due to HeuristicSize (not machine-generated): fall back to full diff.
-    let diff_content = if filter_result.all_excluded && diff_content.trim().is_empty() {
-        get_diff_content().map_err(|e| PreflightError::GitCommandFailed {
-            command: "git diff --cached".into(),
-            source: e,
-        })?
-    } else {
-        diff_content
     };
 
     // Check diff size limit
