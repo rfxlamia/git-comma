@@ -32,6 +32,22 @@ pub struct FilterResult {
     pub all_excluded: bool,
 }
 
+impl FilterResult {
+    /// True only when every exclusion is machine-generated (lockfile, binary, or minified).
+    /// HeuristicSize exclusions do NOT count as machine-generated.
+    pub fn all_machine_generated(&self) -> bool {
+        self.all_excluded
+            && self.excluded.iter().all(|f| {
+                matches!(
+                    f.reason,
+                    ExclusionReason::BinaryFile
+                        | ExclusionReason::MachineGeneratedLockfile
+                        | ExclusionReason::MinifiedFile
+                )
+            })
+    }
+}
+
 /// Errors from filter operations.
 #[derive(Debug, thiserror::Error)]
 pub enum FilterError {
